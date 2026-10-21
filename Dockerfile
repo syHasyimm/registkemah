@@ -50,6 +50,14 @@ COPY --from=builder --chown=node:node /app/public ./public
 # no runtime dependencies, and the standalone bundle already carries pg.
 FROM runtime AS migrator
 COPY --from=deps --chown=node:node /app/node_modules/drizzle-orm ./node_modules/drizzle-orm
+# Provisioning scripts run outside Next.js, so their imports are not traced
+# into the standalone server. Include the seeder's auth/validation dependencies.
+COPY --from=deps --chown=node:node /app/node_modules/better-auth ./node_modules/better-auth
+COPY --from=deps --chown=node:node /app/node_modules/@better-auth/utils ./node_modules/@better-auth/utils
+COPY --from=deps --chown=node:node /app/node_modules/@noble/hashes ./node_modules/@noble/hashes
+COPY --from=deps --chown=node:node /app/node_modules/@noble/ciphers ./node_modules/@noble/ciphers
+COPY --from=deps --chown=node:node /app/node_modules/jose ./node_modules/jose
+COPY --from=deps --chown=node:node /app/node_modules/zod ./node_modules/zod
 COPY --chown=node:node drizzle ./drizzle
 COPY --chown=node:node scripts ./scripts
 COPY --chown=node:node src/lib/role-policy.mjs ./src/lib/role-policy.mjs

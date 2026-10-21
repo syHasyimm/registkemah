@@ -32,6 +32,29 @@ Jalankan `npm run seed:panitia`, lalu masuk melalui `/sign-in`. Akun panitia lan
 - Tidak tersedia email/password panitia bawaan. Nilai password tidak dicetak atau diterima melalui argumen command line. Kredensial dapat diberikan melalui environment deployment; jangan menyimpannya dalam Git. Jika password mengandung karakter `$`, tulis `\$` dalam berkas dotenv agar tidak dianggap ekspansi variabel.
 - Gunakan `npm run seed:panitia -- --help` untuk petunjuk. Seeder bukan sarana reset password; gunakan pemulihan password yang tersedia untuk mengganti password.
 
+### Membuat admin/panitia di Coolify
+
+Deploy Dockerfile terbaru agar dependensi seeder ikut tersedia dalam container. Pada aplikasi web, tambahkan `PANITIA_EMAIL`, `PANITIA_NAME`, dan `PANITIA_PASSWORD` melalui **Environment Variables**. Gunakan email milik pengelola dan password pilihan sendiri (8–128 karakter). Atur **Build time** nonaktif dan **Runtime** aktif; gunakan nilai literal bila password mengandung `$`. Simpan, lalu restart aplikasi agar environment baru terbaca.
+
+Buka **Terminal** aplikasi, pilih container web yang sedang berjalan, lalu jalankan:
+
+```sh
+cd /app
+node scripts/seed-panitia.mjs
+```
+
+Untuk akun admin, lanjutkan dengan email yang sama seperti `PANITIA_EMAIL`:
+
+```sh
+node scripts/set-role.mjs email-pengelola@domainanda.id admin
+```
+
+Untuk akun panitia, cukup perintah seeder pertama. Akun baru langsung terverifikasi dan dapat masuk melalui `/sign-in`, lalu diarahkan ke `/admin`. Akun lama mempertahankan password dan status verifikasinya.
+
+Setelah berhasil, hapus `PANITIA_PASSWORD` dari environment Coolify dan restart aplikasi. Akun tetap tersimpan di database. Seeder tidak dijalankan otomatis saat startup. Jika seeder diulang untuk akun admin, lanjutkan lagi dengan `set-role ... admin` karena seeder selalu menetapkan role `panitia`.
+
+Jika akun sudah terdaftar dan hanya perlu diubah perannya, jalankan `node scripts/set-role.mjs email-pengelola@domainanda.id admin` atau ganti role terakhir menjadi `panitia`, tanpa menjalankan seeder. Keluar dan masuk kembali setelah perubahan role.
+
 ## Penyimpanan dan validasi
 
 Migrasi baru `0003` dan `0004` menambahkan tabel sekolah, kegiatan, pendaftaran, regu, peserta, foto, riwayat status, versi persetujuan, dokumen, kartu, pekerjaan latar, dan audit pekerjaan. Tabel akun dan Notes bawaan dipertahankan.
