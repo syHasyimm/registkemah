@@ -1,11 +1,13 @@
 # Backend standard
 
+Implementasi domain perkemahan dan panduan operasional tersedia di [Backend Registrasi Kemah](camp-backend.md). Bagian berikut mendokumentasikan pola API starter yang juga dipakai fitur tersebut.
+
 The Notes API is a small, working reference backend. It saves real PostgreSQL rows and uses the existing Better Auth accounts. It has no seeded users, mock sessions, or fabricated responses. Use the same structure for new features.
 
 ```text
 HTTP request
   → src/app/api/notes/route.ts or notes/[id]/route.ts
-  → withApiSession: Better Auth session and mutation origin check
+  → withOperatorSession: verified session, operator role, and mutation origin
   → src/validators/notes.ts: validate JSON, parameters, and query strings
   → src/services/notes.service.ts: domain operations and Drizzle queries
   → src/db/schema/notes.ts: PostgreSQL table
@@ -19,7 +21,7 @@ HTTP request
 - **Schemas** define tables, indexes, defaults, and relationships. Each table has its own file; `src/db/schema/index.ts` exports them all for Drizzle Kit, the pool, and Better Auth. Table files import dependencies directly from sibling files, avoiding circular barrel imports.
 - **Shared HTTP helpers** in `src/lib/api.ts` provide session checks, JSON parsing, errors, and private response caching. Better Auth's own `/api/auth/*` handler stays delegated to Better Auth and its Drizzle adapter.
 
-Authenticate every entrypoint before calling a service. `withApiSession` performs an authoritative Better Auth lookup and returns JSON 401 for an absent, expired, or revoked session. A protected layout is not API authorization. If a Server Component needs a service, first call `requireSession()` there; browser operations use API routes. Do not put SQL into a page or introduce a parallel Server Action mutation flow for ordinary app features.
+Authenticate every entrypoint before calling a service. `withApiSession` performs an authoritative Better Auth lookup and returns JSON 401 for an absent, expired, or revoked session. Use `withOperatorSession` for operator endpoints and `withApiPermission` for staff endpoints. A protected layout is not API authorization. Pages independently use `requireRole` or `requirePermission` at their data boundary. Do not put SQL into a page or introduce a parallel Server Action mutation flow for ordinary app features.
 
 ## Notes endpoints
 
@@ -70,7 +72,9 @@ export const roles = {
 };
 ```
 
-Roles live in `user.role` as a string; a comma-separated list such as `admin,support` grants the union. Signup cannot set it — the column is `input: false` — so an account can never promote itself. Every new account gets `defaultRole`.
+Each account has exactly one `user.role`: `user` (school operator), `panitia`, or `admin`. Database constraints and Better Auth hooks reject combined or unknown roles. Signup cannot set it — the column is `input: false` — and public email/social account creation always uses `defaultRole: user`. Role changes replace the previous role.
+
+The camp application also declares `panitia`: registration review, private camp files, exports, and event settings. It has no Better Auth user/session management or cross-account Notes permissions. The full `admin` role remains available for application owners. Create committee accounts with `npm run seed:panitia`; see the [committee seed guide](camp-backend.md#seeder-panitia).
 
 Grant a role to an existing account:
 
@@ -99,7 +103,7 @@ Both helpers read the stored role, so revoking a role takes effect on the next r
 | GET    | `/api/admin/notes`     | 200, every account's notes plus `ownerName`/`ownerEmail` |
 | DELETE | `/api/admin/notes/:id` | 204, deletes any account's note                          |
 
-Cross-account service functions carry an `Any` suffix (`listAnyNotes`, `deleteAnyNote`) because they deliberately skip the ownership filter. They are only safe behind a permission check — never call them from a handler that merely has a session. Ordinary `listNotes`/`deleteNote` stay scoped to the session user even for an admin, so `/admin` and `/app` show different things to the same person.
+Cross-account service functions carry an `Any` suffix (`listAnyNotes`, `deleteAnyNote`) because they deliberately skip the ownership filter. They are only safe behind a permission check. Ordinary Notes and school APIs require operator role and filter ownership; admins/panitia cannot use those endpoints even when they own legacy rows. Staff use their permitted administrative endpoints.
 
 The admin plugin also adds `banned`, `banReason`, `banExpires`, and `session.impersonatedBy`, plus its own `/api/auth/admin/*` endpoints for user management. Those are guarded by the `user` and `session` actions in `defaultStatements`, which only `admin` holds here.
 
@@ -129,7 +133,7 @@ The browser sends your existing session cookie and origin. Visiting `/api/notes`
 1. Create a table file under `src/db/schema/` and export it from `index.ts`. Leave existing auth table names and fields unchanged.
 2. Define strict input schemas under `src/validators/`.
 3. Add a server-only `*.service.ts` under `src/services/` with all domain queries. Require the authenticated user ID for user-owned operations.
-4. Add thin API route handlers using `withApiSession`, or `withApiPermission` when the endpoint reaches past the caller's own rows, then call them from the frontend.
+4. Add thin API route handlers using `withOperatorSession` for operator data, or `withApiPermission` for staff data, then call them from the frontend.
 5. Generate a new migration with `npm run db:generate`, inspect it, and apply with `npm run db:migrate`. Keep SQL and metadata together; do not edit applied migrations.
 6. Run `npm run check`, `npm run build`, and `npm run test:e2e`. Add tests for CRUD, rejected input, anonymous access, and cross-account isolation like `e2e/notes.spec.ts`. Tests use their own disposable PostgreSQL server.
 

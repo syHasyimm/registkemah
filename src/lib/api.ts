@@ -3,6 +3,8 @@ import { ZodError } from "zod";
 import { auth } from "@/lib/auth";
 import { env } from "@/lib/env";
 import type { Permissions } from "@/lib/permissions";
+import { ServiceError } from "@/lib/service-error";
+import { isAppRole, type AppRole } from "@/lib/role-policy.mjs";
 
 export class ApiError extends Error {
   constructor(
@@ -29,6 +31,12 @@ export async function withApiSession(
     });
     if (!session)
       throw new ApiError(401, "UNAUTHORIZED", "Sign in to continue.");
+    if (!isAppRole(session.user.role))
+      throw new ApiError(
+        403,
+        "FORBIDDEN_ROLE",
+        "Peran akun tidak valid. Hubungi pengelola.",
+      );
 
     // Better Auth protects its own endpoints. Custom cookie-authenticated mutations need this check too.
     if (!["GET", "HEAD", "OPTIONS"].includes(request.method)) {
@@ -44,7 +52,7 @@ export async function withApiSession(
     }
     response = await handler(session);
   } catch (error) {
-    if (error instanceof ApiError) {
+    if (error instanceof ApiError || error instanceof ServiceError) {
       response = Response.json(
         { error: { code: error.code, message: error.message } },
         { status: error.status },
@@ -92,6 +100,7 @@ export function withApiPermission(
   handler: (session: Session) => Promise<Response>,
 ) {
   return withApiSession(request, async (session) => {
+    assertApiRole(session, ["admin", "panitia"]);
     const { success } = await auth.api.userHasPermission({
       body: { userId: session.user.id, permissions },
     });
@@ -101,6 +110,25 @@ export function withApiPermission(
         "FORBIDDEN",
         "Your account cannot perform this action.",
       );
+    return handler(session);
+  });
+}
+
+function assertApiRole(session: Session, allowed: readonly AppRole[]) {
+  if (!isAppRole(session.user.role) || !allowed.includes(session.user.role))
+    throw new ApiError(
+      403,
+      "FORBIDDEN_ROLE",
+      "Akun ini tidak memiliki akses ke area tersebut.",
+    );
+}
+
+export function withOperatorSession(
+  request: Request,
+  handler: (session: Session) => Promise<Response>,
+) {
+  return withApiSession(request, async (session) => {
+    assertApiRole(session, ["user"]);
     return handler(session);
   });
 }

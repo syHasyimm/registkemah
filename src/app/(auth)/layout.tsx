@@ -1,25 +1,18 @@
 import { redirect } from "next/navigation";
-import { Brand } from "@/components/brand";
+import { AuthFrame } from "@/components/auth-frame";
 import { getSession } from "@/lib/session";
-import { siteConfig } from "@/config/site";
-
+import { roleHome } from "@/lib/role-policy.mjs";
+import { notFound } from "next/navigation";
 export default async function AuthLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  if (await getSession()) redirect(siteConfig.homePath);
-  return (
-    <div className="min-h-svh">
-      <header className="mx-auto max-w-6xl px-6 py-6 sm:px-10">
-        <Brand />
-      </header>
-      <main
-        id="main-content"
-        className="mx-auto flex min-h-[75svh] max-w-6xl items-center justify-center px-6 py-12"
-      >
-        {children}
-      </main>
-    </div>
-  );
+  const session = await getSession();
+  if (session) {
+    const home = roleHome(session.user.role);
+    if (!home) notFound();
+    redirect(home);
+  }
+  return <AuthFrame>{children}</AuthFrame>;
 }

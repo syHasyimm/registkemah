@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { setTimeout as delay } from "node:timers/promises";
 import { expect, test, type APIRequestContext } from "@playwright/test";
+import { verifyAccount } from "./mail-helpers";
 
 const origin = "http://localhost:3101";
 const headers = { Origin: origin };
@@ -25,6 +26,7 @@ async function signUp(client: APIRequestContext) {
     response = await client.post("/api/auth/sign-up/email", { headers, data });
   }
   expect(response.status()).toBe(200);
+  await verifyAccount(client, data.email);
 }
 
 test("every Notes operation requires a real session and returns JSON errors", async ({

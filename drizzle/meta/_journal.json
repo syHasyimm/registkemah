@@ -22,6 +22,27 @@
       "when": 1788950762062,
       "tag": "0002_roles",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792520037902,
+      "tag": "0003_bitter_lorna_dane",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792521366367,
+      "tag": "0004_big_star_brand",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792528621299,
+      "tag": "0005_supreme_butterfly",
+      "breakpoints": true
     }
   ]
 }

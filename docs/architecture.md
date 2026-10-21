@@ -40,7 +40,7 @@ scripts/                        setup, diagnosis, migrations, safe copying
 
 ## Request flow
 
-The browser form calls Better Auth through `/api/auth`. Better Auth validates credentials, hashes passwords, writes through Drizzle, and manages session cookies. The browser redirects to `/app`. The protected layout and page read the session through Better Auth before displaying user information. Signout revokes the session through the same library.
+The browser form calls Better Auth through `/api/auth`. Better Auth validates credentials, hashes passwords, writes through Drizzle, and manages session cookies. `/after-login` reads a fresh server session and redirects operators to `/app`, staff to `/admin`. Each account has one role. Operator pages/APIs require `user`; administrative pages/APIs require staff role plus resource permissions. Public email/social signup creates operators. Signout revokes the session through the same library.
 
 `getSession()` is React-request-cached, not persistently cached between users. `requireSession()` redirects anonymous visitors to `/sign-in`. The base does not implement a second token system, middleware cookie-only authorization, or a custom password hasher.
 

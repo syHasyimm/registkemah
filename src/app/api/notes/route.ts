@@ -1,11 +1,11 @@
-import { readJson, withApiSession } from "@/lib/api";
+import { readJson, withOperatorSession } from "@/lib/api";
 import { createNote, listNotes } from "@/services/notes.service";
 import { createNoteSchema, listNotesSchema } from "@/validators/notes";
 
 export const runtime = "nodejs";
 
 export function GET(request: Request) {
-  return withApiSession(request, async (session) => {
+  return withOperatorSession(request, async (session) => {
     const query = listNotesSchema.parse(
       Object.fromEntries(new URL(request.url).searchParams),
     );
@@ -14,7 +14,7 @@ export function GET(request: Request) {
 }
 
 export function POST(request: Request) {
-  return withApiSession(request, async (session) => {
+  return withOperatorSession(request, async (session) => {
     const input = createNoteSchema.parse(await readJson(request));
     const note = await createNote(session.user.id, input);
     return Response.json(

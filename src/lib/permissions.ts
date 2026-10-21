@@ -9,6 +9,8 @@ import { adminAc, defaultStatements } from "better-auth/plugins/admin/access";
 export const statement = {
   ...defaultStatements,
   notes: ["read-any", "delete-any"],
+  registrations: ["read-any", "review-any"],
+  event: ["manage"],
 } as const;
 
 export const ac = createAccessControl(statement);
@@ -16,17 +18,23 @@ export const ac = createAccessControl(statement);
 // A role is a subset of the statement. Keep `user` deliberately empty: the
 // signed-in default should be able to do nothing beyond its own records.
 export const roles = {
-  user: ac.newRole({ notes: [] }),
+  user: ac.newRole({ notes: [], registrations: [], event: [] }),
+  panitia: ac.newRole({
+    registrations: ["read-any", "review-any"],
+    event: ["manage"],
+  }),
   admin: ac.newRole({
     ...adminAc.statements,
     notes: ["read-any", "delete-any"],
+    registrations: ["read-any", "review-any"],
+    event: ["manage"],
   }),
 } as const;
 
-export type AppRole = keyof typeof roles;
+export type { AppRole } from "./role-policy.mjs";
+import type { AppRole } from "./role-policy.mjs";
 
-// Roles live in the `user.role` column as a string. Better Auth reads a
-// comma-separated list, so "admin,support" grants the union of both.
+// Each account has exactly one role. `user` means operator sekolah.
 export const DEFAULT_ROLE = "user" satisfies AppRole;
 export const ADMIN_ROLES = ["admin"] satisfies AppRole[];
 

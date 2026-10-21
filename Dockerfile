@@ -38,9 +38,10 @@ ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
     PORT=3000 \
     HOSTNAME=0.0.0.0
-RUN mkdir .next && chown node:node .next
+RUN mkdir -p .next .data/camp && chown -R node:node .next .data
 COPY --from=builder --chown=node:node /app/.next/standalone ./
 COPY --from=builder --chown=node:node /app/.next/static ./.next/static
+COPY --from=builder --chown=node:node /app/public ./public
 
 # --- Migrator: apply committed SQL once per release --------------------------
 # Uses MIGRATION_DATABASE_URL when set, otherwise DATABASE_URL. drizzle-orm has
@@ -49,16 +50,17 @@ FROM runtime AS migrator
 COPY --from=deps --chown=node:node /app/node_modules/drizzle-orm ./node_modules/drizzle-orm
 COPY --chown=node:node drizzle ./drizzle
 COPY --chown=node:node scripts ./scripts
+COPY --chown=node:node src/lib/role-policy.mjs ./src/lib/role-policy.mjs
 USER node
 CMD ["node", "scripts/migrate.mjs"]
 
 # --- Runner: the app. Keep last so it stays the default build target ----------
-FROM runtime AS runner
+FROM migrator AS runner
+
 USER node
 EXPOSE 3000
 
-# Liveness only: a static asset, so a database outage does not restart the app.
-HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 CMD \
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 CMD \
   node -e "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/icon.svg').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"
 
-CMD ["node", "server.js"]
+CMD ["sh", "-c", "node scripts/migrate.mjs && exec node server.js"]

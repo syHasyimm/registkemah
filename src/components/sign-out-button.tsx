@@ -28,12 +28,12 @@ export function SignOutButton() {
     <div className="flex flex-wrap items-center gap-2">
       {error && (
         <p role="alert" className="text-sm text-destructive">
-          Couldn’t sign out. Try again.
+          Belum berhasil keluar. Coba lagi.
         </p>
       )}
       <Button onClick={signOut} disabled={pending} variant="outline" size="sm">
         <LogOut aria-hidden="true" />
-        {pending ? "Signing out…" : "Sign out"}
+        {pending ? "Memproses…" : "Keluar"}
       </Button>
     </div>
   );

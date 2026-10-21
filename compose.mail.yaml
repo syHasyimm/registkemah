@@ -1,0 +1,8 @@
+# Local capture only. No email leaves this development service.
+services:
+  mailpit:
+    image: axllent/mailpit:v1.30
+    ports:
+      - "127.0.0.1:${DEV_SMTP_PORT:?Run npm run email:dev}:1025"
+      - "127.0.0.1:${DEV_MAIL_PORT:?Run npm run email:dev}:8025"
+    restart: unless-stopped

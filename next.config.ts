@@ -6,6 +6,9 @@ const nextConfig: NextConfig = {
   // Emits .next/standalone with a minimal server and only the traced runtime
   // files. The Dockerfile ships that folder; npm start keeps working as before.
   output: "standalone",
+  serverExternalPackages: ["pdfkit", "sharp", "nodemailer"],
+  outputFileTracingIncludes: { "/*": ["./assets/**/*"] },
+  outputFileTracingExcludes: { "/*": ["./.data/**/*", "./.env*"] },
 };
 
 export default nextConfig;

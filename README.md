@@ -1,4 +1,14 @@
-# Base Postgres — ngodingpakeai starters
+# Registrasi Kemah
+
+Aplikasi registrasi perkemahan sekolah berdasarkan [PRD](prd.md). Halaman `/app` dan `/admin` terhubung ke PostgreSQL, unggah foto privat, PDF formulir, kartu panitia, dan antrean email. Lihat [panduan backend](docs/camp-backend.md) untuk menjalankan, verifikasi akun, dan menunjuk panitia; [panduan frontend](docs/frontend.md) menjelaskan mode pratinjau.
+
+Untuk email lokal, jalankan `npm run email:dev` sebelum `npm run dev`, lalu buka kotak masuk Mailpit yang ditampilkan. Google dan SMTP produksi membutuhkan kredensial pengelola.
+
+Untuk membuat akun panitia, isi `PANITIA_EMAIL`, `PANITIA_NAME`, dan `PANITIA_PASSWORD` di `.env.local`, lalu jalankan `npm run seed:panitia`. Password akun lama tidak ditimpa. Lihat [seeder panitia](docs/camp-backend.md#seeder-panitia) untuk rincian.
+
+Setiap akun memiliki satu role: operator hanya memakai `/app`, sedangkan admin/panitia hanya memakai `/admin`. Pendaftaran publik selalu membuat operator. Login memilih dashboard secara otomatis; penetapan role mengganti role lama.
+
+## Fondasi starter
 
 The PostgreSQL edition of the base starter: **Next.js, Drizzle ORM, PostgreSQL, Better Auth, Tailwind CSS, shadcn/ui, and Motion**. It includes working accounts, a blank protected app, an authenticated Notes API demonstrating the backend standard, project skills, and Context7 configuration.
 
@@ -80,6 +90,7 @@ The same doc covers **role-based access**: `src/lib/permissions.ts` declares res
 | `npm run db:generate`         | Generate migration SQL after a schema edit                               |
 | `npm run db:migrate`          | Apply committed migrations                                               |
 | `npm run role:set`            | Grant a role: `npm run role:set -- you@example.com admin`                |
+| `npm run seed:panitia`        | Create or grant the committee role from private PANITIA_* settings       |
 | `npm run db:studio`           | Inspect the database with Drizzle Studio                                 |
 | `npm run check`               | Lint, typecheck, and tests against disposable PostgreSQL                 |
 | `npm run build` / `npm start` | Build and serve the production app                                       |

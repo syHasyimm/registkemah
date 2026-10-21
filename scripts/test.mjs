@@ -1,6 +1,7 @@
 import { spawn, spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { readdirSync } from "node:fs";
+import { readdirSync, mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { root } from "./lib.mjs";
 
@@ -57,6 +58,7 @@ try {
     "--wait-timeout",
     "60",
     "postgres",
+    ...(mode === "e2e" ? ["mailpit"] : []),
   ]);
   const address = await run(
     "docker",
@@ -76,7 +78,35 @@ try {
     STARTER_TEST_RUN: project,
     BETTER_AUTH_SECRET: randomBytes(32).toString("hex"),
     BETTER_AUTH_URL: "http://localhost:3101",
+    PRIVATE_STORAGE_DIR: mkdtempSync(resolve(tmpdir(), `${project}-files-`)),
   };
+  if (mode === "e2e") {
+    const smtpAddress = await run(
+      "docker",
+      [...dockerArgs, "port", "mailpit", "1025"],
+      env,
+      true,
+    );
+    const httpAddress = await run(
+      "docker",
+      [...dockerArgs, "port", "mailpit", "8025"],
+      env,
+      true,
+    );
+    const smtpPort = smtpAddress.trim().match(/^127\.0\.0\.1:(\d+)$/)?.[1];
+    const httpPort = httpAddress.trim().match(/^127\.0\.0\.1:(\d+)$/)?.[1];
+    if (!smtpPort || !httpPort)
+      throw new Error("Could not determine isolated test email ports.");
+    Object.assign(testEnv, {
+      SMTP_HOST: "127.0.0.1",
+      SMTP_PORT: smtpPort,
+      SMTP_SECURE: "false",
+      SMTP_USER: "",
+      SMTP_PASSWORD: "",
+      MAIL_FROM: "Kemah Tests <test@kemah.test>",
+      STARTER_TEST_MAIL_URL: `http://127.0.0.1:${httpPort}`,
+    });
+  }
   delete testEnv.__NEXT_PROCESSED_ENV;
   await run(process.execPath, ["scripts/migrate.mjs"], testEnv);
   if (mode === "unit") {
@@ -87,7 +117,11 @@ try {
   } else {
     await run(
       process.execPath,
-      [resolve(root, "node_modules/@playwright/test/cli.js"), "test"],
+      [
+        resolve(root, "node_modules/@playwright/test/cli.js"),
+        "test",
+        ...process.argv.slice(3),
+      ],
       testEnv,
     );
   }

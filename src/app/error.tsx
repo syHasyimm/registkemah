@@ -10,12 +10,11 @@ export default function ErrorPage({
 }) {
   return (
     <main id="main-content" className="mx-auto max-w-lg px-6 py-24">
-      <h1 className="text-2xl font-semibold">Something went wrong</h1>
+      <h1 className="text-2xl font-semibold">Halaman belum dapat dimuat</h1>
       <p className="my-4 leading-7 text-muted-foreground">
-        Try loading this page again. If it keeps happening, check the terminal
-        running your app for details.
+        Coba muat kembali. Jika masalah berlanjut, hubungi pengelola kegiatan.
       </p>
-      <Button onClick={reset}>Try again</Button>
+      <Button onClick={reset}>Coba lagi</Button>
     </main>
   );
 }
