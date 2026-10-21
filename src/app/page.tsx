@@ -18,6 +18,7 @@ import { siteConfig } from "@/config/site";
 import { Button } from "@/components/ui/button";
 import { getEvent } from "@/services/camp.service";
 import { registrationOpen } from "@/lib/camp/types";
+import { MotionReveal } from "@/components/motion";
 export const dynamic = "force-dynamic";
 
 const questions = [
@@ -64,7 +65,7 @@ export default async function HomePage() {
       </header>
       <main id="main-content">
         <section className="public-container landing-hero">
-          <div className="hero-copy">
+          <MotionReveal className="hero-copy" onView={false}>
             <span className="eyebrow">
               <Compass size={16} /> DARI SEKOLAH, UNTUK PETUALANGAN
             </span>
@@ -87,8 +88,8 @@ export default async function HomePage() {
                 Jelajahi aplikasi <ArrowUpRight size={16} />
               </Link>
             </div>
-          </div>
-          <div className="hero-photo">
+          </MotionReveal>
+          <MotionReveal className="hero-photo" delay={0.12} onView={false}>
             <Image
               src="/images/camp-forest.jpg"
               alt="Pemandangan hutan dari dalam tenda perkemahan"
@@ -105,13 +106,13 @@ export default async function HomePage() {
                 <strong>Tentang tumbuh bersama.</strong>
               </p>
             </div>
-          </div>
+          </MotionReveal>
         </section>
         <section
           className="public-container event-strip"
           aria-label="Informasi kegiatan"
         >
-          <div>
+          <MotionReveal>
             <CalendarDays />
             <span>
               <small>Jadwal kegiatan</small>
@@ -121,63 +122,65 @@ export default async function HomePage() {
                   : "Akan diumumkan panitia"}
               </strong>
             </span>
-          </div>
-          <div>
+          </MotionReveal>
+          <MotionReveal delay={0.06}>
             <MapPin />
             <span>
               <small>Lokasi perkemahan</small>
               <strong>{event.location || "Menunggu informasi resmi"}</strong>
             </span>
-          </div>
-          <div>
+          </MotionReveal>
+          <MotionReveal delay={0.12}>
             <Users />
             <span>
               <small>Terbuka untuk</small>
               <strong>Regu putri & regu putra</strong>
             </span>
-          </div>
+          </MotionReveal>
           <a href="#tentang" aria-label="Lihat informasi kegiatan">
             <ArrowRight />
           </a>
         </section>
         <section id="tentang" className="public-container about-section">
-          <div>
+          <MotionReveal>
             <h2>{event.name}</h2>
             <p>{event.description}</p>
             <a href="#alur" className="text-link">
               Mulai dari pendaftaran yang mudah <ArrowRight size={17} />
             </a>
-          </div>
+          </MotionReveal>
           <div className="principles">
-            <div>
+            <MotionReveal delay={0.05}>
               <span>01</span>
               <h3>Satu akun, satu sekolah</h3>
               <p>Kelola data sekolah dan seluruh regu dalam satu tempat.</p>
-            </div>
-            <div>
+            </MotionReveal>
+            <MotionReveal delay={0.1}>
               <span>02</span>
               <h3>8–15 peserta per regu</h3>
               <p>
                 Daftarkan regu putri, putra, atau keduanya. Jumlah dihitung
                 otomatis.
               </p>
-            </div>
-            <div>
+            </MotionReveal>
+            <MotionReveal delay={0.15}>
               <span>03</span>
               <h3>Siap sebelum berangkat</h3>
               <p>
                 Pantau verifikasi dan bawa formulir untuk mengambil kartu di
                 lokasi.
               </p>
-            </div>
+            </MotionReveal>
           </div>
         </section>
         <section id="alur" className="steps-section">
           <div className="public-container">
-            <h2>Dari layar, menuju alam.</h2>
-            <p className="section-intro">
-              Empat langkah sederhana menyiapkan petualangan sekolahmu.
-            </p>
+            <MotionReveal>
+              <h2>Dari layar, menuju alam.</h2>
+              <p className="section-intro">
+                Empat langkah sederhana menyiapkan petualangan sekolahmu.
+              </p>
+            </MotionReveal>
             <div className="landing-steps">
               {[
                 {
@@ -201,20 +204,20 @@ export default async function HomePage() {
                   text: "Bawa formulir yang disetujui untuk menerima kartu fisik di lokasi.",
                 },
               ].map((item, i) => (
-                <div key={item.title}>
+                <MotionReveal key={item.title} delay={i * 0.07}>
                   <div className="step-icon">
                     <item.icon />
                     <span>0{i + 1}</span>
                   </div>
                   <h3>{item.title}</h3>
                   <p>{item.text}</p>
-                </div>
+                </MotionReveal>
               ))}
             </div>
           </div>
         </section>
         <section id="faq" className="public-container faq-section">
-          <div>
+          <MotionReveal>
             <span className="eyebrow">SEBELUM BERANGKAT</span>
             <h2>
               Ada yang ingin
@@ -232,8 +235,8 @@ export default async function HomePage() {
                   : "Kontak panitia akan ditampilkan setelah informasi kegiatan ditetapkan."}
               </span>
             </div>
-          </div>
-          <div className="faq-list">
+          </MotionReveal>
+          <MotionReveal className="faq-list" delay={0.1}>
             {questions.map(([question, answer]) => (
               <details key={question}>
                 <summary>
@@ -243,9 +246,9 @@ export default async function HomePage() {
                 <p>{answer}</p>
               </details>
             ))}
-          </div>
+          </MotionReveal>
         </section>
-        <section className="public-container closing-cta">
+        <MotionReveal as="section" className="public-container closing-cta">
           <TentTree size={40} />
           <h2>
             Cerita berikutnya
@@ -264,7 +267,7 @@ export default async function HomePage() {
                 ? "Periode pendaftaran sedang ditutup. Draf dapat disimpan setelah masuk."
                 : "Jadwal pendaftaran akan diumumkan oleh panitia."}
           </p>
-        </section>
+        </MotionReveal>
       </main>
       <footer className="public-container public-footer">
         <Brand />

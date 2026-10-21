@@ -13,6 +13,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { MotionReveal } from "@/components/motion";
 import { Field } from "./fields";
 import { useCamp, useRegistration } from "./workspace";
 import {
@@ -169,7 +170,7 @@ export function AdminRegistrationDetail({ id }: { id: string }) {
                 berbeda; pastikan kembali kepada operator.
               </Notice>
             )}
-            <section className="panel">
+            <MotionReveal as="section" delay={0.0} className="panel">
               <div className="panel-header">
                 <h2>Periksa data sekolah dan peserta</h2>
                 <span className="muted">
@@ -184,10 +185,10 @@ export function AdminRegistrationDetail({ id }: { id: string }) {
               <div className="panel-body">
                 <RegistrationSummary registration={reg} />
               </div>
-            </section>
+            </MotionReveal>
           </div>
           <aside className="stack">
-            <section className="panel">
+            <MotionReveal as="section" delay={0.06} className="panel">
               <div className="panel-header">
                 <h2>Keputusan panitia</h2>
                 <ShieldCheck size={17} className="text-muted-foreground" />
@@ -242,9 +243,9 @@ export function AdminRegistrationDetail({ id }: { id: string }) {
                   menghalangi persetujuan.
                 </p>
               </div>
-            </section>
+            </MotionReveal>
             {verified && (
-              <section className="panel">
+              <MotionReveal as="section" delay={0.12} className="panel">
                 <div className="panel-header">
                   <h2>Dokumen & pemberitahuan</h2>
                   <span className="muted">v{reg.version}</span>
@@ -372,16 +373,16 @@ export function AdminRegistrationDetail({ id }: { id: string }) {
                     </div>
                   )}
                 </div>
-              </section>
+              </MotionReveal>
             )}
-            <section className="panel">
+            <MotionReveal as="section" delay={0.0} className="panel">
               <div className="panel-header">
                 <h2>Riwayat keputusan</h2>
               </div>
               <div className="panel-body">
                 <Timeline registration={reg} />
               </div>
-            </section>
+            </MotionReveal>
           </aside>
         </div>
       )}

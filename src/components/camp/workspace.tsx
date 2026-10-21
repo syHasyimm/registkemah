@@ -30,6 +30,7 @@ import {
 import { Brand } from "@/components/brand";
 import { siteConfig } from "@/config/site";
 import { SignOutButton } from "@/components/sign-out-button";
+import { MotionPage } from "@/components/motion";
 import { initialState } from "@/lib/camp/fixtures";
 import type { CampState, Registration } from "@/lib/camp/types";
 import { defaultEvent } from "@/lib/camp/defaults";
@@ -672,7 +673,7 @@ function WorkspaceShell({
           </div>
         )}
         <main id="main-content" className="workspace-content">
-          {children}
+          <MotionPage>{children}</MotionPage>
         </main>
         <footer className="workspace-footer no-print">
           <span>{siteConfig.name}</span>

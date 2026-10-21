@@ -22,6 +22,7 @@ import {
   Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { MotionStep } from "@/components/motion";
 import { Field } from "./fields";
 import {
   Confirm,
@@ -537,7 +538,7 @@ export function RegistrationForm() {
             </div>
           )}
           <div className="form-layout">
-            <div>
+            <MotionStep step={step}>
               {step === 0 && (
                 <section className="panel">
                   <div className="panel-header">
@@ -1206,7 +1207,7 @@ export function RegistrationForm() {
                   )}
                 </>
               )}
-            </div>
+            </MotionStep>
             <aside className="form-sidebar panel">
               <div className="panel-body">
                 <p className="registration-summary-caption">Pendaftaranmu</p>

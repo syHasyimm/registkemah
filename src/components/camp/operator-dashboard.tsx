@@ -14,6 +14,7 @@ import {
   Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { MotionFill, MotionReveal } from "@/components/motion";
 import { useCamp } from "./workspace";
 import {
   EmptyState,
@@ -75,7 +76,7 @@ export function OperatorDashboard() {
           </Link>
         </Button>
       </PageHeading>
-      <div className="welcome-banner">
+      <MotionReveal className="welcome-banner" delay={0.05}>
         <div>
           <h2>Regu hebat dimulai dari persiapan yang baik.</h2>
           <p>
@@ -84,7 +85,7 @@ export function OperatorDashboard() {
           </p>
         </div>
         <TentTree className="welcome-illustration" />
-      </div>
+      </MotionReveal>
       <Stats registrations={[reg]} />
       {reg.status === "Perlu perbaikan" && (
         <Notice tone="warning" title="Ada data yang perlu diperbaiki">
@@ -110,7 +111,7 @@ export function OperatorDashboard() {
       )}
       <div className="dashboard-columns">
         <div className="stack">
-          <section className="panel">
+          <MotionReveal as="section" delay={0.0} className="panel">
             <div className="panel-header">
               <h2>Pendaftaran sekolahmu</h2>
               <StatusBadge status={reg.status} />
@@ -140,7 +141,7 @@ export function OperatorDashboard() {
                 aria-valuemax={100}
                 aria-label="Kelengkapan pendaftaran"
               >
-                <div style={{ width: `${completion}%` }} />
+                <MotionFill style={{ width: `${completion}%` }} />
               </div>
               <div className="checklist">
                 {checkpoints.map((checkpoint) => (
@@ -170,8 +171,8 @@ export function OperatorDashboard() {
                   : "Belum ada draf yang disimpan"}
               </p>
             </div>
-          </section>
-          <section className="panel">
+          </MotionReveal>
+          <MotionReveal as="section" delay={0.06} className="panel">
             <div className="panel-header">
               <h2>Regu yang disiapkan</h2>
               <Link
@@ -211,10 +212,10 @@ export function OperatorDashboard() {
                 Mulai dengan satu regu putri atau putra berisi 8–15 peserta.
               </EmptyState>
             )}
-          </section>
+          </MotionReveal>
         </div>
         <div className="stack">
-          <section className="panel">
+          <MotionReveal as="section" delay={0.12} className="panel">
             <div className="panel-header">
               <h2>Informasi kegiatan</h2>
               <TentTree size={17} className="text-muted-foreground" />
@@ -264,8 +265,8 @@ export function OperatorDashboard() {
                   : "Draf dapat disimpan. Pengiriman menunggu periode pendaftaran dari panitia."}
               </Notice>
             </div>
-          </section>
-          <section className="panel">
+          </MotionReveal>
+          <MotionReveal as="section" delay={0.0} className="panel">
             <div className="panel-header">
               <h2>Perjalanan pendaftaran</h2>
               <ClipboardCheck size={17} className="text-muted-foreground" />
@@ -273,7 +274,7 @@ export function OperatorDashboard() {
             <div className="panel-body">
               <Timeline registration={reg} />
             </div>
-          </section>
+          </MotionReveal>
           <Link href={href("/app/pendaftaran/bukti")} className="notice">
             <Download size={19} />
             <div>

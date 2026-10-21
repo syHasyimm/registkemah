@@ -3,6 +3,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { MotionReveal } from "@/components/motion";
 import template from "@/components/image/Olivia Wilson.png";
 import { useCamp } from "./workspace";
 import { EmptyState, Notice, PageHeading, ParticipantPhoto } from "./common";
@@ -32,7 +33,7 @@ function PreviewIdCards({ id }: { id: string }) {
           title="ID card peserta"
           description="Kartu hanya tersedia untuk versi persetujuan yang masih aktif."
         />
-        <section className="panel">
+        <MotionReveal as="section" delay={0.0} className="panel">
           <EmptyState
             title={
               reg.status !== "Terverifikasi"
@@ -53,7 +54,7 @@ function PreviewIdCards({ id }: { id: string }) {
               ? "Sekolah belum terverifikasi atau sedang direvisi. Kartu versi lama dinonaktifkan."
               : "Periksa status proses pada detail pendaftaran. Pada mode pratinjau, ubah skenario berkas menjadi Siap untuk melihat kartu contoh."}
           </EmptyState>
-        </section>
+        </MotionReveal>
       </>
     );
   const participants = reg.patrols
@@ -109,8 +110,12 @@ function PreviewIdCards({ id }: { id: string }) {
         </div>
       </div>
       <div className="idcard-grid">
-        {participants.map((m) => (
-          <div className="idcard-wrap" key={m.id}>
+        {participants.map((m, index) => (
+          <MotionReveal
+            className="idcard-wrap"
+            key={m.id}
+            delay={(index % 3) * 0.05}
+          >
             <div
               className="participant-idcard"
               style={{ backgroundImage: `url("${template.src}")` }}
@@ -144,7 +149,7 @@ function PreviewIdCards({ id }: { id: string }) {
             <p>
               {m.patrolName} · {m.category}
             </p>
-          </div>
+          </MotionReveal>
         ))}
       </div>
     </>

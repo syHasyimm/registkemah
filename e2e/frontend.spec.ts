@@ -358,3 +358,79 @@ test("all frontend surfaces fit PRD viewport widths", async ({ page }) => {
     ).toBe(true);
   }
 });
+
+test("reduced motion keeps offscreen content and form steps immediately readable", async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/");
+  await expect(page.locator(".closing-cta")).toHaveCSS("opacity", "1");
+  await expect(page.locator(".closing-cta")).toHaveCSS("transform", "none");
+  await page.goto("/sign-in");
+  await expect(page.locator(".motion-page")).toHaveCSS("opacity", "1");
+  await page.goto("/preview/pendaftaran");
+  await page
+    .getByRole("button", { name: "Regu & peserta", exact: true })
+    .click();
+  await expect(page.locator(".motion-step")).toHaveCSS("opacity", "1");
+  await expect(page.locator(".motion-step")).toHaveCSS("transform", "none");
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.goto("/preview/admin/pendaftaran/al-hikmah/id-card");
+  const card = page.locator(".participant-idcard").last();
+  await expect(card).toBeVisible();
+  await page.emulateMedia({ media: "print", reducedMotion: "no-preference" });
+  await expect(page.locator(".motion-page")).toHaveCSS("opacity", "1");
+  await expect(page.locator(".motion-page")).toHaveCSS("transform", "none");
+  await expect(page.locator(".idcard-wrap").last()).toHaveCSS("opacity", "1");
+  await expect(page.locator(".idcard-wrap").last()).toHaveCSS(
+    "transform",
+    "none",
+  );
+  const size = await card.boundingBox();
+  expect(size?.width).toBeCloseTo((55 / 25.4) * 96, 0);
+  expect(size?.height).toBeCloseTo((85 / 25.4) * 96, 0);
+});
+
+test("dashboard progress fills remain visible after their panels enter the viewport", async ({
+  page,
+}) => {
+  await page.goto("/preview/admin");
+  const track = page.locator(".distribution-row .progress-track").first();
+  await track.scrollIntoViewIfNeeded();
+  await expect
+    .poll(async () => {
+      const outer = await track.boundingBox();
+      const fill = await track.locator(":scope > div").boundingBox();
+      return outer && fill ? fill.width / outer.width : 0;
+    })
+    .toBeCloseTo(0.2, 2);
+  await page.goto("/preview");
+  const completion = page.getByRole("progressbar", {
+    name: "Kelengkapan pendaftaran",
+  });
+  await completion.scrollIntoViewIfNeeded();
+  await expect
+    .poll(async () => {
+      const outer = await completion.boundingBox();
+      const fill = await completion.locator(":scope > div").boundingBox();
+      const value =
+        Number(await completion.getAttribute("aria-valuenow")) / 100;
+      return outer && fill ? Math.abs(fill.width / outer.width - value) : 1;
+    })
+    .toBeLessThan(0.01);
+});
+
+test("animation styles have a server-rendered fallback without JavaScript", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({ javaScriptEnabled: false });
+  try {
+    const page = await context.newPage();
+    await page.goto("/");
+    await expect(page.locator(".hero-copy")).toHaveCSS("opacity", "1");
+    await expect(page.locator(".hero-photo")).toHaveCSS("transform", "none");
+    await expect(page.locator(".closing-cta")).toHaveCSS("opacity", "1");
+  } finally {
+    await context.close();
+  }
+});

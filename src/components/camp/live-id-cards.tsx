@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { MotionReveal } from "@/components/motion";
 import { campRequest } from "@/lib/camp/http-client";
 import { useCamp, useRegistration } from "./workspace";
 import { EmptyState, Notice, PageHeading } from "./common";
@@ -91,7 +92,7 @@ export function LiveIdCards({ id }: { id: string }) {
         )}
       </div>
       {!active ? (
-        <section className="panel mt-5">
+        <MotionReveal as="section" delay={0.0} className="panel mt-5">
           <EmptyState
             title={
               reg?.status === "Terverifikasi"
@@ -102,7 +103,7 @@ export function LiveIdCards({ id }: { id: string }) {
             Periksa status kartu atau coba ulang proses melalui halaman detail
             pendaftaran.
           </EmptyState>
-        </section>
+        </MotionReveal>
       ) : (
         <>
           <div className="idcard-toolbar no-print">
@@ -124,8 +125,12 @@ export function LiveIdCards({ id }: { id: string }) {
             </p>
           </div>
           <div className="idcard-grid">
-            {rows.map((c) => (
-              <div className="idcard-wrap" key={c.id}>
+            {rows.map((c, index) => (
+              <MotionReveal
+                className="idcard-wrap"
+                key={c.id}
+                delay={(index % 3) * 0.05}
+              >
                 <div className="participant-idcard">
                   <Image
                     unoptimized
@@ -150,7 +155,7 @@ export function LiveIdCards({ id }: { id: string }) {
                 <p>
                   {c.patrolName} · {c.category}
                 </p>
-              </div>
+              </MotionReveal>
             ))}
           </div>
         </>

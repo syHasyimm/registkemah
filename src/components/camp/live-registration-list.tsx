@@ -9,6 +9,7 @@ import {
   Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { MotionReveal } from "@/components/motion";
 import { Input } from "@/components/ui/input";
 import { statuses, type Registration } from "@/lib/camp/types";
 import { campRequest } from "@/lib/camp/http-client";
@@ -147,7 +148,12 @@ export function LiveRegistrationList() {
           </Notice>
         </div>
       )}
-      <section className="panel" aria-busy={loading}>
+      <MotionReveal
+        as="section"
+        delay={0.0}
+        className="panel"
+        aria-busy={loading}
+      >
         <div className="panel-header">
           <h2>Daftar pendaftaran ({result.meta.total})</h2>
           <span className="muted">
@@ -197,7 +203,7 @@ export function LiveRegistrationList() {
             </button>
           </nav>
         </div>
-      </section>
+      </MotionReveal>
       <p className="muted mt-4">
         Ekspor mencakup seluruh hasil pencarian dan filter, termasuk halaman
         berikutnya.

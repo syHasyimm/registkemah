@@ -10,6 +10,7 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { MotionReveal } from "@/components/motion";
 import { useCamp, useRegistration } from "./workspace";
 import {
   EmptyState,
@@ -83,7 +84,7 @@ export function RegistrationDocument({
           </>
         )}
         {!verified ? (
-          <section className="panel">
+          <MotionReveal as="section" delay={0.0} className="panel">
             <EmptyState
               title="Formulir menunggu persetujuan"
               action={
@@ -105,11 +106,11 @@ export function RegistrationDocument({
                 ? "Versi formulir sebelumnya sudah dinonaktifkan. Perbaiki data dan tunggu persetujuan terbaru."
                 : "Selesaikan pendaftaran dan pantau pemeriksaan panitia dari beranda."}
             </EmptyState>
-          </section>
+          </MotionReveal>
         ) : (
           <div className="dashboard-columns">
             <div className="stack">
-              <section className="panel">
+              <MotionReveal as="section" delay={0.06} className="panel">
                 <div className="panel-header">
                   <h2>Formulir sekolah</h2>
                   <StatusBadge status={reg.status} />
@@ -196,9 +197,9 @@ export function RegistrationDocument({
                       : "Unduh PDF, cetak seluruh halaman pada kertas A4, lalu bawa formulir versi terbaru ke panitia."}
                   </p>
                 </div>
-              </section>
+              </MotionReveal>
               {ready && (
-                <section className="panel">
+                <MotionReveal as="section" delay={0.12} className="panel">
                   <div className="panel-header">
                     <h2>Isi formulir</h2>
                     <span className="muted">Versi {reg.version}</span>
@@ -206,11 +207,11 @@ export function RegistrationDocument({
                   <div className="panel-body">
                     <RegistrationSummary registration={reg} />
                   </div>
-                </section>
+                </MotionReveal>
               )}
             </div>
             <aside className="stack">
-              <section className="panel">
+              <MotionReveal as="section" delay={0.0} className="panel">
                 <div className="panel-header">
                   <h2>Sebelum mengambil kartu</h2>
                 </div>
@@ -253,7 +254,7 @@ export function RegistrationDocument({
                     </p>
                   </div>
                 </div>
-              </section>
+              </MotionReveal>
               <Notice title="Pemberitahuan persetujuan">
                 Email ditujukan ke {reg.school.email}. Status email tidak
                 menentukan akses formulir di aplikasi.

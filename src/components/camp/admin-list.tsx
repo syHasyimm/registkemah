@@ -9,6 +9,7 @@ import {
   Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { MotionReveal } from "@/components/motion";
 import { Input } from "@/components/ui/input";
 import { useCamp } from "./workspace";
 import { EmptyState, PageHeading } from "./common";
@@ -116,7 +117,7 @@ function PreviewRegistrationList() {
             ))}
         </select>
       </div>
-      <section className="panel">
+      <MotionReveal as="section" delay={0.0} className="panel">
         <div className="panel-header">
           <h2>
             Daftar pendaftaran{" "}
@@ -191,7 +192,7 @@ function PreviewRegistrationList() {
             </button>
           </nav>
         </div>
-      </section>
+      </MotionReveal>
       <p className="muted mt-4">
         Ekspor mengikuti seluruh hasil pencarian dan filter, termasuk halaman
         berikutnya. File pratinjau berisi data contoh.

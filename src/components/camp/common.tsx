@@ -14,6 +14,8 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { motion, useReducedMotion } from "motion/react";
+import { MotionReveal } from "@/components/motion";
 import {
   formatTime,
   totals,
@@ -33,14 +35,14 @@ export function PageHeading({
   eyebrow?: string;
 }) {
   return (
-    <div className="page-heading">
+    <MotionReveal className="page-heading" onView={false}>
       <div>
         {eyebrow && <p className="page-eyebrow">{eyebrow}</p>}
         <h1>{title}</h1>
         {description && <p>{description}</p>}
       </div>
       {children && <div className="heading-actions">{children}</div>}
-    </div>
+    </MotionReveal>
   );
 }
 export function StatusBadge({ status }: { status: RegistrationStatus }) {
@@ -71,13 +73,13 @@ export function Notice({
   tone?: "info" | "success" | "warning" | "error";
 }) {
   return (
-    <div className={`notice notice-${tone}`}>
+    <MotionReveal className={`notice notice-${tone}`} onView={false}>
       <Info size={19} />
       <div>
         {title && <strong>{title}</strong>}
         <div>{children}</div>
       </div>
-    </div>
+    </MotionReveal>
   );
 }
 export function EmptyState({
@@ -90,14 +92,14 @@ export function EmptyState({
   action?: ReactNode;
 }) {
   return (
-    <div className="empty-state">
+    <MotionReveal className="empty-state">
       <span>
         <TentTree size={30} />
       </span>
       <h3>{title}</h3>
       <p>{children}</p>
       {action}
-    </div>
+    </MotionReveal>
   );
 }
 export function Stats({
@@ -165,15 +167,20 @@ export function Stats({
       ];
   return (
     <div className="stats-grid">
-      {stats.map((stat) => (
-        <div className="stat-card" key={stat.label}>
+      {stats.map((stat, index) => (
+        <MotionReveal
+          className="stat-card"
+          key={stat.label}
+          delay={index * 0.06}
+          lift
+        >
           <div>
             <span>{stat.label}</span>
             <stat.icon size={19} />
           </div>
           <strong>{stat.value.toLocaleString("id-ID")}</strong>
           <small>{stat.hint}</small>
-        </div>
+        </MotionReveal>
       ))}
     </div>
   );
@@ -353,6 +360,7 @@ export function Modal({
   children: ReactNode;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const reduce = useReducedMotion();
   const titleId = useId();
   const descriptionId = useId();
   useEffect(() => {
@@ -361,9 +369,13 @@ export function Modal({
     else if (!open && dialog?.open) dialog.close();
   }, [open]);
   return (
-    <dialog
+    <motion.dialog
       ref={ref}
       className="camp-dialog"
+      data-motion="dialog"
+      initial={false}
+      animate={{ opacity: open ? 1 : 0, scale: open || reduce ? 1 : 0.97 }}
+      transition={{ duration: reduce ? 0 : 0.2 }}
       onCancel={onClose}
       onClose={onClose}
       aria-labelledby={titleId}
@@ -381,7 +393,7 @@ export function Modal({
         </p>
       )}
       {children}
-    </dialog>
+    </motion.dialog>
   );
 }
 export function Confirm({

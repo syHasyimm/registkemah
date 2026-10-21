@@ -11,6 +11,7 @@ import {
   TentTree,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { MotionFill, MotionReveal } from "@/components/motion";
 import { useCamp } from "./workspace";
 import { EmptyState, PageHeading, Stats, StatusBadge } from "./common";
 import { exportCsv } from "@/lib/camp/export";
@@ -94,7 +95,7 @@ export function AdminDashboard() {
           scope === "masuk" ? data.overview?.all : data.overview?.verified
         }
       />
-      <div className="welcome-banner">
+      <MotionReveal className="welcome-banner" delay={0.05}>
         <div>
           <h2>
             {awaitingCount
@@ -112,9 +113,9 @@ export function AdminDashboard() {
             Periksa pendaftaran <ArrowRight />
           </Link>
         </Button>
-      </div>
+      </MotionReveal>
       <div className="dashboard-columns">
-        <section className="panel">
+        <MotionReveal as="section" delay={0.0} className="panel">
           <div className="panel-header">
             <div>
               <h2>Pendaftaran 7 hari terakhir</h2>
@@ -133,7 +134,9 @@ export function AdminDashboard() {
               {days.map((d, i) => (
                 <div className="chart-bar" key={i}>
                   <strong>{d.count}</strong>
-                  <div
+                  <MotionFill
+                    vertical
+                    delay={i * 0.05}
                     style={{ height: `${Math.max(4, (d.count / max) * 100)}%` }}
                   />
                   <span>{d.label}</span>
@@ -151,8 +154,8 @@ export function AdminDashboard() {
               </span>
             </div>
           </div>
-        </section>
-        <section className="panel">
+        </MotionReveal>
+        <MotionReveal as="section" delay={0.06} className="panel">
           <div className="panel-header">
             <h2>Status pendaftaran</h2>
             <ShieldCheck size={17} className="text-muted-foreground" />
@@ -172,7 +175,7 @@ export function AdminDashboard() {
                       <strong>{count}</strong>
                     </div>
                     <div className="progress-track">
-                      <div
+                      <MotionFill
                         style={{
                           width: `${incomingCount ? (count / incomingCount) * 100 : 0}%`,
                         }}
@@ -182,9 +185,9 @@ export function AdminDashboard() {
                 );
               })}
           </div>
-        </section>
+        </MotionReveal>
       </div>
-      <section className="panel mt-6">
+      <MotionReveal as="section" delay={0.12} className="panel mt-6">
         <div className="panel-header">
           <div>
             <h2>Perlu ditinjau</h2>
@@ -201,7 +204,7 @@ export function AdminDashboard() {
             Sekolah yang mengirim pendaftaran akan muncul di sini.
           </EmptyState>
         )}
-      </section>
+      </MotionReveal>
       <div className="mt-6 notice">
         <TentTree size={21} />
         <div>

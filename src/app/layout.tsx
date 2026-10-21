@@ -17,6 +17,9 @@ export default function RootLayout({
   return (
     <html lang="id">
       <body>
+        <noscript>
+          <style>{`[data-motion] { opacity: 1 !important; transform: none !important; }`}</style>
+        </noscript>
         <Providers>
           <a
             href="#main-content"

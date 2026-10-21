@@ -2220,7 +2220,8 @@
   letter-spacing: -0.8px;
   margin-top: 16px;
 }
-.auth-form-container > p {
+.auth-form-container > p,
+.auth-form-container > .motion-page > p {
   font-size: 12px;
   color: #859275;
   line-height: 1.9;
@@ -3905,7 +3906,72 @@
     font-size: 11px;
   }
 }
+/* Shared motion surfaces preserve the existing layout and print dimensions. */
+.motion-page,
+.motion-step {
+  min-width: 0;
+}
+.motion-page {
+  display: flow-root;
+}
+.panel,
+.stat-card {
+  box-shadow: 0 3px 16px -12px rgb(30 65 42 / 16%);
+}
+.stat-card {
+  position: relative;
+  overflow: hidden;
+}
+.stat-card::before {
+  content: "";
+  position: absolute;
+  inset: 18px auto 18px 0;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: #c2d7b6;
+}
+.stat-card:first-child {
+  background: #f0f5eb;
+  border-color: #d6e3cb;
+}
+.stat-card:first-child::before {
+  background: var(--primary);
+}
+.sidebar-link,
+.mobile-nav-icon,
+.status-tabs button,
+.wizard-step,
+.icon-button,
+[data-slot="button"] {
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease,
+    box-shadow 180ms ease;
+}
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .stat-card:hover {
+    border-color: #b8cdb0;
+    box-shadow: 0 10px 24px -16px rgb(30 65 42 / 25%);
+  }
+  .hero-actions [data-slot="button"]:hover,
+  .closing-cta [data-slot="button"]:hover {
+    box-shadow: 0 6px 20px -8px rgb(30 65 42 / 40%);
+  }
+  .text-link > svg,
+  .panel-title-link > svg {
+    transition: transform 180ms ease;
+  }
+  .text-link:hover > svg,
+  .panel-title-link:hover > svg {
+    transform: translateX(3px);
+  }
+}
 @media (prefers-reduced-motion: reduce) {
+  [data-motion] {
+    opacity: 1 !important;
+    transform: none !important;
+  }
   html {
     scroll-behavior: auto;
   }
@@ -3921,6 +3987,10 @@
   margin: 12mm;
 }
 @media print {
+  [data-motion] {
+    opacity: 1 !important;
+    transform: none !important;
+  }
   body {
     background: #fff !important;
     color: #111;

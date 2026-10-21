@@ -2,6 +2,7 @@
 import { useState, type FormEvent } from "react";
 import { CalendarDays, Save, ShieldCheck, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { MotionReveal } from "@/components/motion";
 import { Field } from "./fields";
 import { useCamp } from "./workspace";
 import { Notice, PageHeading } from "./common";
@@ -72,7 +73,7 @@ export function EventSettingsForm() {
           )}
           <div className="review-layout">
             <div className="stack">
-              <section className="panel">
+              <MotionReveal as="section" delay={0.0} className="panel">
                 <div className="panel-header">
                   <div>
                     <h2>Identitas kegiatan</h2>
@@ -119,8 +120,8 @@ export function EventSettingsForm() {
                     onChange={(e) => change("eventEnd", e.target.value)}
                   />
                 </div>
-              </section>
-              <section className="panel">
+              </MotionReveal>
+              <MotionReveal as="section" delay={0.06} className="panel">
                 <div className="panel-header">
                   <h2>Periode pendaftaran</h2>
                   <CalendarDays size={17} className="text-muted-foreground" />
@@ -165,8 +166,8 @@ export function EventSettingsForm() {
                     </Notice>
                   </div>
                 </div>
-              </section>
-              <section className="panel">
+              </MotionReveal>
+              <MotionReveal as="section" delay={0.12} className="panel">
                 <div className="panel-header">
                   <h2>Kontak & pengambilan kartu</h2>
                 </div>
@@ -199,10 +200,10 @@ export function EventSettingsForm() {
                     />
                   </Field>
                 </div>
-              </section>
+              </MotionReveal>
             </div>
             <aside className="stack">
-              <section className="panel">
+              <MotionReveal as="section" delay={0.0} className="panel">
                 <div className="panel-header">
                   <h2>Ketentuan tetap</h2>
                   <ShieldCheck size={17} />
@@ -233,7 +234,7 @@ export function EventSettingsForm() {
                     </p>
                   </div>
                 </div>
-              </section>
+              </MotionReveal>
               <Notice
                 title={
                   preview

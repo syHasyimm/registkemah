@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowLeft, TentTree } from "lucide-react";
 import { Brand } from "@/components/brand";
 import { siteConfig } from "@/config/site";
+import { MotionPage, MotionReveal } from "@/components/motion";
 export function AuthFrame({ children }: { children: React.ReactNode }) {
   return (
     <div className="auth-page">
@@ -15,7 +16,7 @@ export function AuthFrame({ children }: { children: React.ReactNode }) {
           sizes="46vw"
         />
         <Brand />
-        <div className="auth-visual-copy">
+        <MotionReveal className="auth-visual-copy" delay={0.15} onView={false}>
           <TentTree />
           <h2>
             Satu regu.
@@ -28,7 +29,7 @@ export function AuthFrame({ children }: { children: React.ReactNode }) {
             Mulai persiapan sekolahmu. Petualangan, persaudaraan, dan pelajaran
             baru menunggu di luar sana.
           </p>
-        </div>
+        </MotionReveal>
         <div className="auth-visual-footer">
           <span>Registrasi Perkemahan Sekolah</span>
           <span>Bertumbuh bersama.</span>
@@ -46,7 +47,7 @@ export function AuthFrame({ children }: { children: React.ReactNode }) {
           </Link>
         </header>
         <main id="main-content" className="auth-form-container">
-          {children}
+          <MotionPage>{children}</MotionPage>
         </main>
         <footer className="auth-content-footer">
           © 2026 {siteConfig.name} · Bersiap bersama. Bertumbuh bersama.
