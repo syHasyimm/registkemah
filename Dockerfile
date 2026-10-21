@@ -12,7 +12,9 @@ ARG NODE_VERSION=22-slim
 FROM node:${NODE_VERSION} AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN --mount=type=cache,target=/root/.npm npm ci --no-audit --no-fund
+# Build tools (Tailwind/PostCSS, TypeScript) are required even when Coolify
+# supplies NODE_ENV=production while installing dependencies.
+RUN --mount=type=cache,target=/root/.npm npm ci --include=dev --no-audit --no-fund
 
 # --- Build the standalone server ---------------------------------------------
 FROM node:${NODE_VERSION} AS builder
