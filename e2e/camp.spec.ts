@@ -412,7 +412,7 @@ test("persisted registration, private photos, approval jobs, PDF, email, card ac
   const pdfBytes = await pdf.body();
   expect(pdfBytes.subarray(0, 5).toString()).toBe("%PDF-");
   expect(pdfBytes.toString("latin1").match(/\/Type \/Page\b/g)).toHaveLength(1);
-  expect(pdfBytes.includes(Buffer.from("registration-form-v3"))).toBe(true);
+  expect(pdfBytes.includes(Buffer.from("registration-form-v4"))).toBe(true);
   await writeFile(testInfo.outputPath("formulir-v1.pdf"), pdfBytes);
   expect(
     (await other.client.get(`/api/registrations/${reg.id}/document`)).status(),
@@ -445,7 +445,15 @@ test("persisted registration, private photos, approval jobs, PDF, email, card ac
   const cardUrl = cards[0].imageUrl;
   const card = await admin.client.get(cardUrl);
   expect(card.status()).toBe(200);
-  await writeFile(testInfo.outputPath("kartu-v1.png"), await card.body());
+  const uploadedCard = await card.body();
+  const pixel = await sharp(uploadedCard)
+    .extract({ left: 325, top: 430, width: 1, height: 1 })
+    .removeAlpha()
+    .raw()
+    .toBuffer();
+  for (const [index, value] of [153, 187, 136].entries())
+    expect(Math.abs(pixel[index] - value)).toBeLessThan(4);
+  await writeFile(testInfo.outputPath("kartu-v1.png"), uploadedCard);
   expect((await owner.client.get(cardUrl)).status()).toBe(403);
   const notification = await testMail(owner.email, "Disetujui");
   expect(notification.Text).toContain("/app/pendaftaran/bukti");
@@ -653,6 +661,91 @@ test("registration PDF separates fifteen boys and girls and refreshes a legacy a
     connectionString: process.env.STARTER_TEST_DATABASE_URL,
   });
   try {
+    await expect
+      .poll(
+        async () => {
+          const response = await admin.client.get(
+            `/api/admin/registrations/${reg.id}/cards`,
+          );
+          return (await response.json()).data.length;
+        },
+        { timeout: 60_000, intervals: [500, 1000] },
+      )
+      .toBe(30);
+    const cards: {
+      id: string;
+      category: "Putra" | "Putri";
+      imageUrl: string;
+    }[] = (
+      await (
+        await admin.client.get(`/api/admin/registrations/${reg.id}/cards`)
+      ).json()
+    ).data;
+    for (const category of ["Putra", "Putri"] as const) {
+      const card = cards.find((card) => card.category === category)!;
+      const response = await admin.client.get(card.imageUrl);
+      expect(response.status()).toBe(200);
+      const image = await response.body();
+      const metadata = await sharp(image).metadata();
+      expect(metadata.xmp?.toString()).toContain(
+        category === "Putra" ? "boy_scout.svg" : "girl_guide.svg",
+      );
+      const actual = await sharp(image)
+        .extract({ left: 215, top: 322, width: 220, height: 220 })
+        .removeAlpha()
+        .raw()
+        .toBuffer();
+      const expected = await sharp(
+        `public/images/participants/pramuka-${category.toLowerCase()}.svg`,
+      )
+        .resize(346, 346)
+        .extract({ left: 63, top: 63, width: 220, height: 220 })
+        .removeAlpha()
+        .raw()
+        .toBuffer();
+      const difference =
+        actual.reduce(
+          (sum, value, index) => sum + Math.abs(value - expected[index]),
+          0,
+        ) / actual.length;
+      expect(difference).toBeLessThan(8);
+      await writeFile(
+        testInfo.outputPath(`kartu-ilustrasi-${category.toLowerCase()}.png`),
+        image,
+      );
+      const {
+        rows: [stored],
+      } = await pool.query(
+        "SELECT file_key FROM participant_id_cards WHERE id = $1",
+        [card.id],
+      );
+      const cardFile = path.join(
+        process.env.PRIVATE_STORAGE_DIR!,
+        stored.file_key,
+      );
+      const original = await readFile(cardFile);
+      const legacy = await sharp({
+        create: {
+          width: 650,
+          height: 1005,
+          channels: 3,
+          background: "#e9e9e9",
+        },
+      })
+        .png()
+        .toBuffer();
+      await writeFile(cardFile, legacy);
+      try {
+        const refreshed = await admin.client.get(card.imageUrl);
+        expect(refreshed.status()).toBe(200);
+        expect(
+          (await sharp(await refreshed.body()).metadata()).xmp?.toString(),
+        ).toContain("participant-card-v2-scout-avatar");
+        expect((await readFile(cardFile)).equals(legacy)).toBe(true);
+      } finally {
+        await writeFile(cardFile, original);
+      }
+    }
     const {
       rows: [document],
     } = await pool.query(
@@ -662,9 +755,9 @@ test("registration PDF separates fifteen boys and girls and refreshes a legacy a
     const file = path.join(process.env.PRIVATE_STORAGE_DIR!, document.file_key);
     const original = await readFile(file);
     const legacy = Buffer.from(original);
-    const marker = legacy.indexOf("registration-form-v3");
+    const marker = legacy.indexOf("registration-form-v4");
     expect(marker).toBeGreaterThanOrEqual(0);
-    Buffer.from("registration-form-v2").copy(legacy, marker);
+    Buffer.from("registration-form-v3").copy(legacy, marker);
     await writeFile(file, legacy);
     try {
       for (const [client, endpoint] of [
@@ -674,7 +767,7 @@ test("registration PDF separates fifteen boys and girls and refreshes a legacy a
         const refreshed = await client.get(endpoint);
         expect(refreshed.status()).toBe(200);
         const current = await refreshed.body();
-        expect(current.includes(Buffer.from("registration-form-v3"))).toBe(
+        expect(current.includes(Buffer.from("registration-form-v4"))).toBe(
           true,
         );
         expect(

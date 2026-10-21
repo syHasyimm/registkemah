@@ -927,7 +927,11 @@ export function RegistrationForm() {
                                     />
                                   </div>
                                   <div className="photo-controls">
-                                    <ParticipantPhoto participant={m} large />
+                                    <ParticipantPhoto
+                                      participant={m}
+                                      category={p.category}
+                                      large
+                                    />
                                     <div>
                                       <div className="photo-actions">
                                         <label
@@ -977,6 +981,12 @@ export function RegistrationForm() {
                                       <span className="photo-help">
                                         Opsional · JPG, PNG, WebP · Maks. 5 MB
                                       </span>
+                                      {!m.photo && (
+                                        <span className="photo-help">
+                                          Tanpa foto, memakai ilustrasi pramuka{" "}
+                                          {p.category.toLowerCase()}.
+                                        </span>
+                                      )}
                                       {readingPhotos.includes(m.id) && (
                                         <span
                                           role="status"

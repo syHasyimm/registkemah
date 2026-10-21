@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, type ReactNode } from "react";
+import Image from "next/image";
 import {
   Check,
   Circle,
@@ -17,8 +18,13 @@ import { Button } from "@/components/ui/button";
 import { motion, useReducedMotion } from "motion/react";
 import { MotionReveal } from "@/components/motion";
 import {
+  participantAvatar,
+  participantAvatarCredit,
+} from "@/lib/camp/participant-avatar";
+import {
   formatTime,
   totals,
+  type Category,
   type Registration,
   type RegistrationStatus,
 } from "@/lib/camp/types";
@@ -290,7 +296,10 @@ export function RegistrationSummary({
                           {String(i + 1).padStart(2, "0")}
                         </span>
                         {showPhotos && (
-                          <ParticipantPhoto participant={participant} />
+                          <ParticipantPhoto
+                            participant={participant}
+                            category={patrol.category}
+                          />
                         )}
                         <div>
                           <strong>
@@ -317,6 +326,7 @@ export function RegistrationSummary({
 }
 export function ParticipantPhoto({
   participant,
+  category,
   large = false,
 }: {
   participant: {
@@ -326,6 +336,7 @@ export function ParticipantPhoto({
     y: number;
     name?: string;
   };
+  category: Category;
   large?: boolean;
 }) {
   return (
@@ -341,7 +352,15 @@ export function ParticipantPhoto({
           aria-label={`Foto ${participant.name || "peserta"}`}
         />
       ) : (
-        <Users size={large ? 28 : 16} aria-label="Foto belum tersedia" />
+        <Image
+          src={participantAvatar(category)}
+          width={large ? 70 : 35}
+          height={large ? 70 : 35}
+          unoptimized
+          loading="eager"
+          alt={`Ilustrasi pramuka ${category.toLowerCase()} pengganti foto ${participant.name || "peserta"}`}
+          title={participantAvatarCredit}
+        />
       )}
     </span>
   );

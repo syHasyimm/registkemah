@@ -677,6 +677,13 @@ function WorkspaceShell({
         </main>
         <footer className="workspace-footer no-print">
           <span>{siteConfig.name}</span>
+          <a
+            href="/images/participants/credits.txt"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Kredit ilustrasi
+          </a>
           <span>
             <Check size={13} /> Bersiap untuk cerita yang baru
           </span>

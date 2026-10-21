@@ -12,7 +12,9 @@ import { readPrivateFile } from "@/lib/private-storage";
 import { ServiceError } from "@/lib/service-error";
 import {
   approvalPhotoSources,
+  hasCurrentParticipantCard,
   REGISTRATION_PDF_LAYOUT,
+  renderParticipantCard,
   renderRegistrationPdf,
 } from "./camp-render.service";
 const unavailable = () =>
@@ -152,6 +154,18 @@ export async function getRegistrationCardAny(id: string, cardId: string) {
   let bytes: Buffer;
   try {
     bytes = await readPrivateFile(card.fileKey);
+    const patrol = approval.snapshot.patrols.find((p) =>
+      p.participants.some((m) => m.id === card.participantId),
+    );
+    const member = patrol?.participants.find(
+      (m) => m.id === card.participantId,
+    );
+    if (!member || !patrol) throw unavailable();
+    // Previously approved cards gain the new fallback without another approval,
+    // rewriting files, or sending another notification. Uploaded photos stay intact.
+    if (!member.photoId && !(await hasCurrentParticipantCard(bytes))) {
+      bytes = await renderParticipantCard(member, new Map(), patrol.category);
+    }
   } catch {
     throw new ServiceError(
       503,

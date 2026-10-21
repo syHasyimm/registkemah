@@ -123,11 +123,7 @@ function PreviewIdCards({ id }: { id: string }) {
               aria-label={`Kartu peserta ${m.name.toLocaleUpperCase("id")}, pangkalan ${m.base.toLocaleUpperCase("id")}`}
             >
               <div className="idcard-photo">
-                {m.photo ? (
-                  <ParticipantPhoto participant={m} />
-                ) : (
-                  <span className="photo-missing">Foto belum tersedia</span>
-                )}
+                <ParticipantPhoto participant={m} category={m.category} />
               </div>
               <div
                 className="idcard-name"

@@ -1520,6 +1520,12 @@
   background-size: cover;
   display: block;
 }
+.participant-photo > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
 .participant-photo.large {
   width: 70px;
   height: 70px;
@@ -2072,12 +2078,6 @@
   height: 100%;
   background: #e7e7e7;
   color: #757575;
-}
-.idcard-photo > span.photo-missing {
-  text-align: center;
-  font-size: 10px;
-  color: #777;
-  padding: 15px;
 }
 .idcard-name {
   position: absolute;
@@ -4049,6 +4049,12 @@
   .print-registration {
     display: block;
     font-size: 10pt;
+  }
+  .print-registration .participant-photo {
+    width: 10mm;
+    height: 10mm;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
   }
   .print-registration h1 {
     font-size: 18pt;

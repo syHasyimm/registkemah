@@ -16,6 +16,7 @@ import {
   EmptyState,
   Notice,
   PageHeading,
+  ParticipantPhoto,
   RegistrationSummary,
   StatusBadge,
 } from "./common";
@@ -316,32 +317,10 @@ export function RegistrationDocument({
                             <td>{m.name}</td>
                             <td>{m.base}</td>
                             <td>
-                              {m.photo ? (
-                                <span
-                                  style={{
-                                    display: "block",
-                                    width: "10mm",
-                                    height: "10mm",
-                                    borderRadius: "50%",
-                                    overflow: "hidden",
-                                  }}
-                                >
-                                  <span
-                                    style={{
-                                      display: "block",
-                                      width: "100%",
-                                      height: "100%",
-                                      backgroundImage: `url("${m.photo}")`,
-                                      backgroundSize: "cover",
-                                      backgroundPosition: `${m.x}% ${m.y}%`,
-                                      transform: `scale(${m.zoom})`,
-                                      printColorAdjust: "exact",
-                                    }}
-                                  />
-                                </span>
-                              ) : (
-                                "Tidak diunggah"
-                              )}
+                              <ParticipantPhoto
+                                participant={m}
+                                category={p.category}
+                              />
                             </td>
                           </tr>
                         ))}

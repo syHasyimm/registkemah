@@ -214,14 +214,14 @@ async function process(job: Job) {
       approvalId: string;
       fileKey: string;
     }[] = [];
-    for (const member of approval.snapshot.patrols.flatMap(
-      (p) => p.participants,
+    for (const { member, category } of approval.snapshot.patrols.flatMap((p) =>
+      p.participants.map((member) => ({ member, category: p.category })),
     ))
       rendered.push({
         participantId: member.id,
         approvalId: approval.id,
         fileKey: await writePrivateFile(
-          await renderParticipantCard(member, sources),
+          await renderParticipantCard(member, sources, category),
           "png",
         ),
       });

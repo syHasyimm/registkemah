@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { readFile } from "node:fs/promises";
+import sharp from "sharp";
 
 test("draft persists, seven members are rejected, review approves and revision revokes artifacts", async ({
   page,
@@ -433,4 +434,67 @@ test("animation styles have a server-rendered fallback without JavaScript", asyn
   } finally {
     await context.close();
   }
+});
+
+test("scout illustrations follow the patrol category and yield to uploaded photos", async ({
+  page,
+}) => {
+  await page.goto("/preview/pendaftaran");
+  await page
+    .getByRole("button", { name: "Regu & peserta", exact: true })
+    .click();
+  const patrols = page.locator("details.patrol-editor");
+  const girl = patrols.first().locator(".participant-editor").first();
+  const boy = patrols.nth(1).locator(".participant-editor").first();
+  await expect(girl.locator(".participant-photo img")).toHaveAttribute(
+    "src",
+    "/images/participants/pramuka-putri.svg",
+  );
+  await expect(boy.locator(".participant-photo img")).toHaveAttribute(
+    "src",
+    "/images/participants/pramuka-putra.svg",
+  );
+  const photo = await sharp({
+    create: { width: 100, height: 100, channels: 3, background: "#99bb88" },
+  })
+    .png()
+    .toBuffer();
+  await girl
+    .getByLabel("Foto peserta 1 regu Melati", { exact: true })
+    .setInputFiles({
+      name: "foto-uji.png",
+      mimeType: "image/png",
+      buffer: photo,
+    });
+  await expect(
+    girl.getByRole("img", { name: "Foto Aulia Putri", exact: true }),
+  ).toBeVisible();
+  await expect(girl.locator(".participant-photo img")).toHaveCount(0);
+  await girl.getByRole("button", { name: "Hapus foto", exact: true }).click();
+  await expect(girl.locator(".participant-photo img")).toHaveAttribute(
+    "src",
+    "/images/participants/pramuka-putri.svg",
+  );
+  await page.goto("/preview/admin/pendaftaran/al-hikmah/id-card");
+  await expect(
+    page.locator('.idcard-photo img[src$="pramuka-putra.svg"]'),
+  ).toHaveCount(8);
+  await expect(
+    page.locator('.idcard-photo img[src$="pramuka-putri.svg"]'),
+  ).toHaveCount(8);
+  await expect
+    .poll(() =>
+      page
+        .locator(".idcard-photo img")
+        .evaluateAll((images) =>
+          images.every(
+            (image) =>
+              (image as HTMLImageElement).complete &&
+              (image as HTMLImageElement).naturalWidth === 512,
+          ),
+        ),
+    )
+    .toBe(true);
+  await page.emulateMedia({ media: "print" });
+  await expect(page.locator(".idcard-photo img").last()).toBeVisible();
 });

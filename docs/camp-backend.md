@@ -121,6 +121,8 @@ Bytes gambar diperiksa melalui Sharp, bukan ekstensi berkas. Format JPEG/PNG/Web
 
 Unggahan dibuka sebelum transfer agar pengiriman dapat menolak unggahan yang masih berjalan. Unggahan yang terbengkalai kedaluwarsa setelah 20 menit. Hasil foto berupa versi immutable; mengganti atau melepaskan foto tidak menghapus versi yang masih diperlukan persetujuan lama.
 
+Peserta tanpa `photoId` memakai SVG pramuka putra/putri lokal menurut kategori regu pada snapshot persetujuan. Ini hanya pengganti visual, bukan unggahan baru; foto asli tetap dipakai beserta crop-nya. PNG kartu menyertakan penanda `participant-card-v2-scout-avatar` dan kredit ilustrasi pada XMP. Pembacaan kartu lama tanpa foto merender versi baru dari snapshot aktif tanpa menimpa berkas tersimpan atau mengirim email lagi. PDF memakai penanda `registration-form-v4`; unduhan formulir lama otomatis memakai tampilan terkini melalui mekanisme pembaruan yang sudah ada. Hak akses dan pencabutan versi lama tetap diperiksa sebelum dan sesudah pembacaan/render.
+
 Berkas disimpan di `PRIVATE_STORAGE_DIR`, default `.data/camp`, menggunakan nama UUID buatan server. Direktori ini tidak berada di `public`, diabaikan Git, dan dikecualikan dari build image. Jalur filesystem tidak dikirim ke browser. Untuk produksi gunakan volume persisten dan sertakan database serta direktori ini dalam rencana backup. Jika ada beberapa instance aplikasi, semuanya harus membaca penyimpanan privat bersama yang sama.
 
 ## Persetujuan dan pekerjaan latar

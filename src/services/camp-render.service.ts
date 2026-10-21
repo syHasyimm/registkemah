@@ -1,11 +1,16 @@
 import "server-only";
 import path from "node:path";
+import { readFile } from "node:fs/promises";
 import sharp, { type OverlayOptions } from "sharp";
 import PDFDocument from "pdfkit";
 import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import { participantPhotos } from "@/db/schema";
 import { readPrivateFile } from "@/lib/private-storage";
+import {
+  participantAvatar,
+  participantAvatarCredit,
+} from "@/lib/camp/participant-avatar";
 import type {
   Category,
   EventSettings,
@@ -15,7 +20,8 @@ import type {
 } from "@/lib/camp/types";
 
 // Stored in the PDF metadata so downloads can recognize an older layout.
-export const REGISTRATION_PDF_LAYOUT = "registration-form-v3";
+export const REGISTRATION_PDF_LAYOUT = "registration-form-v4";
+export const PARTICIPANT_CARD_LAYOUT = "participant-card-v2-scout-avatar";
 
 const fontPath = (bold = false) =>
   path.join(
@@ -51,7 +57,7 @@ export async function approvalPhotoSources(registration: Registration) {
 }
 async function cropPhoto(
   source: Buffer,
-  member: Participant,
+  member: Pick<Participant, "zoom" | "x" | "y">,
   size: number,
   circle = false,
 ) {
@@ -97,6 +103,42 @@ async function cropPhoto(
         .toBuffer()
     : output;
 }
+
+// Only public illustrations are cached. Uploaded photos still follow approval access checks.
+const avatarPortraits = new Map<string, Promise<Buffer>>();
+function avatarPortrait(category: Category, size: number) {
+  const key = `${category}:${size}`;
+  let portrait = avatarPortraits.get(key);
+  if (!portrait) {
+    portrait = readFile(
+      path.join(process.cwd(), "public", participantAvatar(category).slice(1)),
+    )
+      .then((source) =>
+        cropPhoto(source, { zoom: 1, x: 50, y: 50 }, size, true),
+      )
+      .catch((error: unknown) => {
+        avatarPortraits.delete(key);
+        throw error;
+      });
+    avatarPortraits.set(key, portrait);
+  }
+  return portrait;
+}
+async function participantPortrait(
+  member: Participant,
+  sources: Map<string, Buffer>,
+  category: Category,
+  size: number,
+) {
+  if (!member.photoId) return avatarPortrait(category, size);
+  const source = sources.get(member.photoId);
+  if (!source) throw new Error("Approved photo missing");
+  return cropPhoto(source, member, size, true);
+}
+export async function hasCurrentParticipantCard(bytes: Buffer) {
+  const metadata = await sharp(bytes).metadata();
+  return metadata.xmp?.includes(Buffer.from(PARTICIPANT_CARD_LAYOUT)) ?? false;
+}
 const escapeMarkup = (value: string) =>
   value
     .replaceAll("&", "&amp;")
@@ -126,28 +168,18 @@ async function textLayer(
 export async function renderParticipantCard(
   member: Participant,
   sources: Map<string, Buffer>,
+  category: Category,
 ) {
   // Preserve the supplied source. Dynamic masks remove the example picture and labels.
   const clean = Buffer.from(
     '<svg width="650" height="1004"><circle cx="325" cy="432" r="173" fill="#e9e9e9"/><rect x="155" y="642" width="340" height="61" fill="#e9e9e9"/><rect x="155" y="713" width="340" height="37" fill="#e9e9e9"/></svg>',
   );
   const layers: OverlayOptions[] = [{ input: clean, top: 0, left: 0 }];
-  if (member.photoId) {
-    const source = sources.get(member.photoId);
-    if (!source) throw new Error("Approved photo missing");
-    layers.push({
-      input: await cropPhoto(source, member, 346, true),
-      top: 259,
-      left: 152,
-    });
-  } else {
-    const placeholder = await textLayer("Foto belum tersedia", 230, 36, false);
-    layers.push({
-      input: placeholder.data,
-      left: Math.round((650 - placeholder.info.width) / 2),
-      top: 415,
-    });
-  }
+  layers.push({
+    input: await participantPortrait(member, sources, category, 346),
+    top: 259,
+    left: 152,
+  });
   const name = await textLayer(
     member.name.toLocaleUpperCase("id"),
     470,
@@ -183,6 +215,16 @@ export async function renderParticipantCard(
   return sharp(path.join(process.cwd(), "assets", "id-card-reference.png"))
     .composite(layers)
     .resize(650, 1005, { fit: "fill" })
+    .withXmp(
+      `<x:xmpmeta xmlns:x="adobe:ns:meta/">
+      <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+        <rdf:Description rdf:about="" xmlns:camp="urn:registkemah:metadata">
+          <camp:layout>${PARTICIPANT_CARD_LAYOUT}</camp:layout>
+          ${!member.photoId ? `<camp:avatarCredit>${escapeMarkup(participantAvatarCredit)}</camp:avatarCredit><camp:avatarLicense>https://creativecommons.org/licenses/by-sa/3.0/</camp:avatarLicense><camp:avatarSource>https://media.scoutwiki.org/File:Icon_${category === "Putra" ? "boy_scout" : "girl_guide"}.svg</camp:avatarSource>` : ""}
+        </rdf:Description>
+      </rdf:RDF>
+    </x:xmpmeta>`,
+    )
     .png()
     .toBuffer();
 }
@@ -202,6 +244,7 @@ export async function renderRegistrationPdf(
       Author: "Panitia Perkemahan",
       Subject: `Versi persetujuan ${registration.version}`,
       Keywords: REGISTRATION_PDF_LAYOUT,
+      Creator: participantAvatarCredit,
     },
   });
   doc.registerFont("Body", fontPath());
@@ -352,12 +395,7 @@ export async function renderRegistrationPdf(
     startPage(category);
     for (const patrol of categoryPatrols) {
       const rows = patrol.participants.map((member, index) => {
-        const values = [
-          String(index + 1),
-          member.name,
-          member.base,
-          member.photoId ? "" : "-",
-        ];
+        const values = [String(index + 1), member.name, member.base, ""];
         doc.font("Body").fontSize(8);
         const rowHeight = Math.max(
           22,
@@ -404,16 +442,12 @@ export async function renderRegistrationPdf(
             .text(values[i], x + 4, y + 4, { width: widths[i] - 8 });
           x += widths[i];
         }
-        if (member.photoId) {
-          const source = sources.get(member.photoId);
-          if (!source) throw new Error("Approved photo missing");
-          doc.image(
-            await cropPhoto(source, member, 120, true),
-            left + width - widths[3] + (widths[3] - 18) / 2,
-            y + (rowHeight - 18) / 2,
-            { width: 18, height: 18 },
-          );
-        }
+        doc.image(
+          await participantPortrait(member, sources, category, 120),
+          left + width - widths[3] + (widths[3] - 18) / 2,
+          y + (rowHeight - 18) / 2,
+          { width: 18, height: 18 },
+        );
         doc
           .moveTo(left, y + rowHeight)
           .lineTo(left + width, y + rowHeight)
@@ -462,6 +496,17 @@ export async function renderRegistrationPdf(
       width: signatureWidth,
       align: "center",
     });
+    const marginBottom = doc.page.margins.bottom;
+    doc.page.margins.bottom = 0;
+    doc
+      .font("Body")
+      .fontSize(6)
+      .fillColor("#666666")
+      .text(participantAvatarCredit, left, doc.page.height - 24, {
+        width,
+        lineBreak: false,
+      });
+    doc.page.margins.bottom = marginBottom;
   }
   doc.end();
   return completed;

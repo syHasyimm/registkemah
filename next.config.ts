@@ -7,7 +7,9 @@ const nextConfig: NextConfig = {
   // files. The Dockerfile ships that folder; npm start keeps working as before.
   output: "standalone",
   serverExternalPackages: ["pdfkit", "sharp", "nodemailer"],
-  outputFileTracingIncludes: { "/*": ["./assets/**/*"] },
+  outputFileTracingIncludes: {
+    "/*": ["./assets/**/*", "./public/images/participants/*"],
+  },
   outputFileTracingExcludes: { "/*": ["./.data/**/*", "./.env*"] },
 };
 

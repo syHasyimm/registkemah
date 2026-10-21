@@ -1,0 +1,19 @@
+ILUSTRASI PENGGANTI FOTO PESERTA
+
+pramuka-putra.svg
+Source: Icon boy scout, by Akela - Haooow! (Akela NDE)
+https://media.scoutwiki.org/File:Icon_boy_scout.svg
+
+pramuka-putri.svg
+Source: Icon girl guide, by Akela - Haooow! (Akela NDE), updated by Egel
+https://media.scoutwiki.org/File:Icon_girl_guide.svg
+
+Both sources: Creative Commons Attribution-ShareAlike 3.0 Unported
+https://creativecommons.org/licenses/by-sa/3.0/
+
+Underlying public-domain people artwork: Francesco Rollandin / Openclipart.
+Adaptations in this project: brown uniforms, red-white neckerchiefs, dark hair,
+square portrait framing, background, eyes, and smiles.
+The adapted SVG illustrations remain available under CC BY-SA 3.0.
+The license applies to these illustrations, not to participants' photographs,
+personal information, card templates, or the application code.
