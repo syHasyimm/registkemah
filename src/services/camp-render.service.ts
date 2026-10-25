@@ -7,6 +7,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import { participantPhotos } from "@/db/schema";
 import { readPrivateFile } from "@/lib/private-storage";
+import { ServiceError } from "@/lib/service-error";
 import {
   participantAvatar,
   participantAvatarCredit,
@@ -50,7 +51,12 @@ export async function approvalPhotoSources(registration: Registration) {
   const sources = new Map<string, Buffer>();
   for (const id of ids) {
     const row = rows.find((photo) => photo.id === id);
-    if (!row?.fileKey) throw new Error("Approved photo unavailable");
+    if (!row?.fileKey)
+      throw new ServiceError(
+        422,
+        "APPROVED_PHOTO_UNAVAILABLE",
+        "Foto pada versi persetujuan ini tidak tersedia. Pulihkan foto atau minta revisi untuk mengunggah ulang.",
+      );
     sources.set(id, await readPrivateFile(row.fileKey));
   }
   return sources;

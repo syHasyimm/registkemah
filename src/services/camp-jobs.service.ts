@@ -20,6 +20,11 @@ import {
   renderRegistrationPdf,
 } from "./camp-render.service";
 import { lockRegistration, type CampExecutor } from "./camp.service";
+import {
+  jobFailureDetails,
+  jobFailureMessage,
+  type JobStage,
+} from "@/lib/camp/job-failure.mjs";
 
 type Job = typeof campJobs.$inferSelect;
 export async function enqueueAccountEmail(payload: MailPayload) {
@@ -116,7 +121,7 @@ async function done(tx: CampExecutor, job: Job, messageId?: string) {
       and(eq(campJobs.id, job.id), eq(campJobs.leaseToken, job.leaseToken!)),
     );
 }
-async function process(job: Job) {
+async function process(job: Job, context: { stage: JobStage }) {
   if (job.kind === "auth-email") {
     if (
       !job.payload ||
@@ -138,10 +143,13 @@ async function process(job: Job) {
         );
       return;
     }
+    context.stage = "send-email";
     const messageId = await sendMail(job.payload, job.id);
+    context.stage = "save-mail-status";
     await done(db, job, messageId);
     return;
   }
+  context.stage = "load-approval";
   const [approval] = await db
     .select()
     .from(registrationApprovals)
@@ -164,6 +172,7 @@ async function process(job: Job) {
     // Serialize dispatch against revision so an obsolete version cannot be sent after revision commits.
     // SMTP calls have bounded timeouts; image/PDF processing stays outside transactions.
     await db.transaction(async (tx) => {
+      context.stage = "validate-approval";
       const active = await activeJob(tx, job);
       if (!active) return;
       const [owner] = await tx
@@ -180,6 +189,7 @@ async function process(job: Job) {
           "Email operator perlu diverifikasi kembali sebelum pemberitahuan dikirim.",
         );
       const event = approval.eventSnapshot;
+      context.stage = "send-email";
       const messageId = await sendMail(
         {
           to: owner.email,
@@ -188,18 +198,23 @@ async function process(job: Job) {
         },
         job.id,
       );
+      context.stage = "save-mail-status";
       await done(tx, job, messageId);
     });
     return;
   }
+  context.stage = "read-photos";
   const sources = await approvalPhotoSources(approval.snapshot);
   if (job.kind === "document") {
+    context.stage = "render-pdf";
     const bytes = await renderRegistrationPdf(
       approval.snapshot,
       approval.eventSnapshot,
       sources,
     );
+    context.stage = "write-pdf";
     const fileKey = await writePrivateFile(bytes, "pdf");
+    context.stage = "save-result";
     await db.transaction(async (tx) => {
       if (!(await activeJob(tx, job))) return;
       await tx
@@ -216,15 +231,17 @@ async function process(job: Job) {
     }[] = [];
     for (const { member, category } of approval.snapshot.patrols.flatMap((p) =>
       p.participants.map((member) => ({ member, category: p.category })),
-    ))
+    )) {
+      context.stage = "render-card";
+      const bytes = await renderParticipantCard(member, sources, category);
+      context.stage = "write-card";
       rendered.push({
         participantId: member.id,
         approvalId: approval.id,
-        fileKey: await writePrivateFile(
-          await renderParticipantCard(member, sources, category),
-          "png",
-        ),
+        fileKey: await writePrivateFile(bytes, "png"),
       });
+    }
+    context.stage = "save-result";
     await db.transaction(async (tx) => {
       if (!(await activeJob(tx, job))) return;
       await tx
@@ -240,13 +257,21 @@ function processEnvOrigin() {
     globalThis.process.env.BETTER_AUTH_URL || "http://localhost:3000",
   ).origin;
 }
-async function fail(job: Job, error: unknown) {
+async function fail(job: Job, error: unknown, stage: JobStage) {
+  const details = jobFailureDetails(error, stage);
+  console.error(
+    "[camp-worker] job failed",
+    JSON.stringify({
+      jobId: job.id,
+      kind: job.kind,
+      attempt: job.attempts,
+      ...details,
+    }),
+  );
   const safeError =
     error instanceof ServiceError
-      ? error.message
-      : job.kind === "email" || job.kind === "auth-email"
-        ? "Layanan SMTP belum menerima pesan. Periksa pengaturan atau coba lagi."
-        : "Berkas atau foto sumber belum dapat diproses. Periksa penyimpanan dan coba lagi.";
+      ? `${error.message} [${details.stage}/${details.code}]`
+      : jobFailureMessage(details, job.kind);
   const final = job.attempts >= 3;
   await db.transaction(async (tx) => {
     if (job.approvalId && !(await activeJob(tx, job))) return;
@@ -285,10 +310,11 @@ export async function processJobsAny() {
     for (let i = 0; i < 6; i++) {
       const job = await claim();
       if (!job) break;
+      const context: { stage: JobStage } = { stage: "load-approval" };
       try {
-        await process(job);
+        await process(job, context);
       } catch (error) {
-        await fail(job, error);
+        await fail(job, error, context.stage);
       }
     }
   } finally {
@@ -301,8 +327,11 @@ export function startCampWorker() {
   };
   if (state.campWorkerTimer) return;
   const tick = () => {
-    void processJobsAny().catch(() =>
-      console.error("Camp worker could not reach its database; it will retry."),
+    void processJobsAny().catch((error) =>
+      console.error(
+        "[camp-worker] queue failed; it will retry",
+        JSON.stringify(jobFailureDetails(error, "claim")),
+      ),
     );
   };
   state.campWorkerTimer = setInterval(tick, 3000);

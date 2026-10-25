@@ -41,7 +41,9 @@ export async function sendMail(
       messageId: `<${id}@registrasi-kemah.local>`,
     });
     if (!result.accepted.length || result.rejected.length)
-      throw new Error("Recipient not accepted");
+      throw Object.assign(new Error("Recipient not accepted"), {
+        code: "EENVELOPE",
+      });
     return String(result.messageId);
   } finally {
     transport.close();

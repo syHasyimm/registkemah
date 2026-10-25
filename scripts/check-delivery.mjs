@@ -45,6 +45,14 @@ async function check(label, run) {
 console.log(
   "Pemeriksaan SMTP, PDF/kartu, storage, dan antrean. Tidak mengirim email.",
 );
+if (process.getuid)
+  console.log(
+    `Pengguna pemeriksaan: uid=${process.getuid()} gid=${process.getgid()}. Image Docker menjalankan aplikasi sebagai node (uid/gid 1000).`,
+  );
+if (process.getuid?.() === 0)
+  console.log(
+    "Pemeriksaan berjalan sebagai root; izin storage untuk aplikasi belum terbukti. Jalankan ulang sebagai pengguna node.",
+  );
 await check("Worker", () => {
   if (process.env.CAMP_WORKER_DISABLED === "true")
     throw problem(
@@ -149,6 +157,13 @@ if (!flags.has("--skip-db"))
         "Antrean (tanpa isi email/data peserta):",
         JSON.stringify(rows),
       );
+      const recent = await pool.query(
+        "SELECT j.id,j.kind,j.attempts,j.safe_error,j.last_attempt_at FROM camp_jobs j LEFT JOIN registration_approvals a ON a.id = j.approval_id WHERE j.status = 'Failed' AND (j.approval_id IS NULL OR a.active) ORDER BY j.last_attempt_at DESC NULLS LAST LIMIT 10",
+      );
+      console.log(
+        "Kegagalan terbaru (kode/tahap setelah retry pada image terbaru):",
+        JSON.stringify(recent.rows),
+      );
       const photos = await pool.query(
         "SELECT file_key FROM participant_photos WHERE status = 'Ready' ORDER BY created_at DESC LIMIT 20",
       );
@@ -169,6 +184,52 @@ if (!flags.has("--skip-db"))
           "SOURCE_PHOTOS_MISSING",
           `${missing} dari ${photos.rowCount} foto sampel tidak terbaca. Periksa volume/backup PRIVATE_STORAGE_DIR.`,
         );
+      const approvals = await pool.query(
+        "SELECT a.snapshot FROM registration_approvals a WHERE a.active AND EXISTS (SELECT 1 FROM camp_jobs j WHERE j.approval_id = a.id AND j.status = 'Failed' AND j.kind IN ('document','cards')) ORDER BY a.approved_at DESC LIMIT 10",
+      );
+      const { default: sharp } = await import("sharp");
+      let referenced = 0;
+      for (const approval of approvals.rows) {
+        const snapshot = approval.snapshot;
+        for (const patrol of snapshot.patrols || [])
+          for (const member of patrol.participants || []) {
+            if (!member.photoId) continue;
+            referenced++;
+            const photo = await pool.query(
+              "SELECT file_key FROM participant_photos WHERE id = $1 AND registration_id = $2 AND status = 'Ready'",
+              [member.photoId, snapshot.id],
+            );
+            const key = photo.rows[0]?.file_key;
+            if (!/^[a-f0-9-]{36}\.(webp|png)$/.test(key || ""))
+              throw problem(
+                "APPROVED_PHOTO_UNAVAILABLE",
+                "Foto yang dirujuk snapshot persetujuan gagal tidak tersedia. Pulihkan foto atau minta revisi untuk unggah ulang.",
+              );
+            const bytes = await readFile(path.join(storage, key));
+            const metadata = await sharp(bytes).metadata();
+            if (!metadata.width || !metadata.height)
+              throw problem(
+                "PHOTO_FORMAT_INVALID",
+                "Foto pada snapshot gagal tidak dapat dibaca sebagai gambar.",
+              );
+            if (
+              ![member.zoom, member.x, member.y].every(Number.isFinite) ||
+              member.zoom < 1 ||
+              member.zoom > 2.5 ||
+              member.x < 0 ||
+              member.x > 100 ||
+              member.y < 0 ||
+              member.y > 100
+            )
+              throw problem(
+                "PHOTO_CROP_INVALID",
+                "Posisi/zoom foto pada snapshot persetujuan gagal tidak valid. Minta revisi dan atur ulang foto.",
+              );
+          }
+      }
+      console.log(
+        `Foto pada snapshot persetujuan gagal diperiksa: ${referenced}.`,
+      );
       if (rows.some((row) => row.status === "Failed"))
         console.log(
           "Pekerjaan Failed perlu dicoba ulang dari detail pendaftaran setelah penyebab diperbaiki.",
@@ -223,6 +284,9 @@ if (!flags.has("--skip-smtp"))
     });
     try {
       await transport.verify();
+      console.log(
+        "SMTP verify lolos koneksi/autentikasi; penerimaan alamat pengirim/penerima dan isi pesan belum diuji.",
+      );
     } catch (error) {
       const hints = {
         EAUTH:

@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { setTimeout as delay } from "node:timers/promises";
-import { readFile, writeFile } from "node:fs/promises";
+import { readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { Pool } from "pg";
 import sharp from "sharp";
@@ -484,6 +484,78 @@ test("persisted registration, private photos, approval jobs, PDF, email, card ac
         { timeout: 30_000 },
       )
       .toEqual({ status: "Done", attempts: 2 });
+    // A missing approved photo must identify its stage/code without exposing its path.
+    const {
+      rows: [sourcePhoto],
+    } = await jobsPool.query(
+      "SELECT file_key FROM participant_photos WHERE id = $1",
+      [photoId],
+    );
+    const photoFile = path.join(
+      process.env.PRIVATE_STORAGE_DIR!,
+      sourcePhoto.file_key,
+    );
+    const hiddenPhoto = `${photoFile}.test-missing`;
+    await rename(photoFile, hiddenPhoto);
+    try {
+      await jobsPool.query(
+        "UPDATE camp_jobs SET status = 'Running', attempts = 2, lease_token = $2, leased_until = now() - interval '1 minute' WHERE approval_id IN (SELECT id FROM registration_approvals WHERE registration_id = $1 AND active) AND kind IN ('document','cards')",
+        [reg.id, randomUUID()],
+      );
+      await expect
+        .poll(
+          async () => {
+            const { rows } = await jobsPool.query(
+              "SELECT kind,status,safe_error FROM camp_jobs WHERE approval_id IN (SELECT id FROM registration_approvals WHERE registration_id = $1 AND active) AND kind IN ('document','cards') ORDER BY kind",
+              [reg.id],
+            );
+            return rows;
+          },
+          { timeout: 30_000 },
+        )
+        .toEqual(
+          ["cards", "document"].map((kind) => ({
+            kind,
+            status: "Failed",
+            safe_error: expect.stringContaining("[read-photos/ENOENT]"),
+          })),
+        );
+      const detail = await admin.client.get(
+        `/api/admin/registrations/${reg.id}`,
+      );
+      const body = await detail.text();
+      expect(body).toContain("[read-photos/ENOENT]");
+      expect(body).not.toContain(sourcePhoto.file_key);
+      expect(body).not.toContain(process.env.PRIVATE_STORAGE_DIR!);
+    } finally {
+      await rename(hiddenPhoto, photoFile);
+    }
+    await jobsPool.query(
+      "UPDATE camp_jobs SET last_attempt_at = now() - interval '2 minutes' WHERE approval_id IN (SELECT id FROM registration_approvals WHERE registration_id = $1 AND active) AND kind IN ('document','cards')",
+      [reg.id],
+    );
+    for (const kind of ["document", "cards"]) {
+      const retried = await admin.client.post(
+        `/api/admin/registrations/${reg.id}/retry`,
+        { headers, data: { kind } },
+      );
+      expect(retried.status()).toBe(200);
+    }
+    await expect
+      .poll(
+        async () => {
+          const { rows } = await jobsPool.query(
+            "SELECT status,safe_error FROM camp_jobs WHERE approval_id IN (SELECT id FROM registration_approvals WHERE registration_id = $1 AND active) AND kind IN ('document','cards')",
+            [reg.id],
+          );
+          return rows;
+        },
+        { timeout: 30_000 },
+      )
+      .toEqual([
+        { status: "Done", safe_error: null },
+        { status: "Done", safe_error: null },
+      ]);
     const {
       rows: [emailJob],
     } = await jobsPool.query(
