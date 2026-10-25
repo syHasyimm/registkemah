@@ -145,6 +145,16 @@ Email/password membutuhkan verifikasi. Email verifikasi dan pemulihan password m
 
 Set `SMTP_HOST`, `SMTP_PORT`, `MAIL_FROM`, dan kredensial `SMTP_USER`/`SMTP_PASSWORD` bila diperlukan. `SMTP_SECURE=true` untuk implicit TLS, umumnya port 465; koneksi eksternal lain mewajibkan STARTTLS. Verifikasi sertifikat TLS tidak dinonaktifkan. SMTP lokal loopback dipakai khusus Mailpit pengujian.
 
+### Memeriksa SMTP, PDF dan kartu di production
+
+Dockerfile memasang Fontconfig untuk pemrosesan teks kartu/SVG oleh Sharp. Setelah memperbarui image, buka Terminal aplikasi Coolify dan jalankan `node scripts/check-delivery.mjs`. Pemeriksaan ini menguji izin baca/tulis `PRIVATE_STORAGE_DIR` dengan berkas sementara, font/aset, render PDF/teks/avatar, ringkasan antrean, keberadaan sampel foto sumber, serta koneksi/TLS/autentikasi SMTP. Ia tidak mengirim email, mengambil pekerjaan, atau mengubah data database. Password, isi email, token verifikasi dan URL database tidak dicetak. Exit code `1` berarti masih ada pemeriksaan yang gagal. Untuk pemeriksaan image tanpa jaringan, gunakan `--skip-db --skip-smtp`.
+
+Untuk SMTP Gmail berbasis username/password, gunakan `SMTP_HOST=smtp.gmail.com`, `SMTP_PORT=465`, `SMTP_SECURE=true`, email lengkap sebagai `SMTP_USER`, dan sandi aplikasi Google yang valid sebagai `SMTP_PASSWORD`. Sandi aplikasi memerlukan Verifikasi 2 Langkah. Error `EAUTH`/535 menunjukkan autentikasi ditolak; timeout menunjukkan masalah koneksi/akses SMTP keluar. Login Google pada website tidak otomatis memberi aplikasi izin mengirim SMTP Gmail.
+
+`EACCES`/`EPERM` pada storage berarti pengguna container tidak memiliki izin baca/tulis pada volume. `SOURCE_PHOTOS_MISSING` berarti foto yang tercatat di database tidak tersedia pada volume saat ini; pasang kembali volume/backup foto yang sesuai. Database dan volume berkas harus dipulihkan bersama. `WORKER_DISABLED` berarti `CAMP_WORKER_DISABLED=true` perlu dihapus, lalu aplikasi direstart.
+
+Setelah konfigurasi diperbaiki dan aplikasi diredeploy/restart, gunakan tombol coba ulang PDF, kartu atau email pada detail pendaftaran yang terverifikasi. Job yang sudah mencapai status `Failed` tidak diulang otomatis hanya dengan restart. Email verifikasi akun yang sudah kedaluwarsa/gagal harus diminta ulang melalui alur login/verifikasi.
+
 Tidak ada akun panitia yang dibuat saat startup. Pemilik dapat menjalankan seeder panitia secara eksplisit, atau menunjuk akun terdaftar melalui perintah role. Google OAuth dan pengiriman ke kotak masuk internet tetap membutuhkan kredensial milik pengelola. Tidak ada deployment atau layanan berbayar yang dibuat.
 
 Masa retensi peserta/foto/dokumen, jadwal penghapusan, serta kebijakan backup perlu ditetapkan pengelola sebelum peluncuran. Implementasi mempertahankan versi lama untuk audit dan tidak menghapus data secara otomatis.
