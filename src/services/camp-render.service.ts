@@ -19,9 +19,11 @@ import type {
   Patrol,
   Registration,
 } from "@/lib/camp/types";
+import { patrolCompanions, type Companion } from "@/lib/camp/types";
+import { formatCertificateName } from "@/lib/camp/certificates";
 
 // Stored in the PDF metadata so downloads can recognize an older layout.
-export const REGISTRATION_PDF_LAYOUT = "registration-form-v4";
+export const REGISTRATION_PDF_LAYOUT = "registration-form-v5-companions";
 export const PARTICIPANT_CARD_LAYOUT = "participant-card-v2-scout-avatar";
 
 const fontPath = (bold = false) =>
@@ -155,12 +157,19 @@ async function textLayer(
   width: number,
   height: number,
   bold: boolean,
+  leagueSpartan = false,
 ) {
   return sharp({
     text: {
       text: escapeMarkup(text),
-      font: bold ? "Noto Sans Bold" : "Noto Sans",
-      fontfile: fontPath(bold),
+      font: leagueSpartan
+        ? "League Spartan Bold"
+        : bold
+          ? "Noto Sans Bold"
+          : "Noto Sans",
+      fontfile: leagueSpartan
+        ? path.join(process.cwd(), "assets", "fonts", "LeagueSpartan-Bold.ttf")
+        : fontPath(bold),
       width,
       height,
       align: "center",
@@ -233,6 +242,79 @@ export async function renderParticipantCard(
     )
     .png()
     .toBuffer();
+}
+
+export async function renderCompanionCard(
+  companion: Companion,
+  school: string,
+  patrol: Pick<Patrol, "name" | "category">,
+  photo?: Buffer,
+) {
+  const portrait = photo
+    ? await cropPhoto(photo, companion, 346, true)
+    : await cropPhoto(
+        await readFile(
+          path.join(
+            process.cwd(),
+            "public",
+            "images",
+            "companions",
+            "pembina.svg",
+          ),
+        ),
+        { zoom: 1, x: 50, y: 50 },
+        346,
+        true,
+      );
+  const name = await textLayer(
+    formatCertificateName(companion.name),
+    470,
+    51,
+    true,
+    true,
+  );
+  const base = await textLayer(school, 450, 32, false);
+  const role = await textLayer("Pembina Pendamping", 440, 35, true, true);
+  const group = await textLayer(
+    `${patrol.name} · ${patrol.category}`,
+    470,
+    30,
+    false,
+  );
+  const layers: OverlayOptions[] = [
+    {
+      input: Buffer.from(
+        '<svg width="650" height="1004"><circle cx="325" cy="432" r="173" fill="#e9e9e9"/><rect x="80" y="642" width="490" height="61" fill="#e9e9e9"/><rect x="90" y="713" width="470" height="37" fill="#e9e9e9"/><rect x="90" y="791" width="470" height="50" rx="10" fill="#e4ded0"/><rect x="80" y="850" width="490" height="40" fill="#e9e9e9"/></svg>',
+      ),
+      top: 0,
+      left: 0,
+    },
+    { input: portrait, top: 259, left: 152 },
+  ];
+  for (const [layer, y, height] of [
+    [name, 646, 51],
+    [base, 716, 32],
+    [role, 799, 35],
+    [group, 855, 30],
+  ] as const)
+    layers.push({
+      input: layer.data,
+      left: Math.round((650 - layer.info.width) / 2),
+      top: y + Math.round((height - layer.info.height) / 2),
+    });
+  return sharp(path.join(process.cwd(), "assets", "id-card-reference.png"))
+    .composite(layers)
+    .resize(650, 1005, { fit: "fill" })
+    .withXmp(
+      '<x:xmpmeta xmlns:x="adobe:ns:meta/"><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"><rdf:Description xmlns:camp="urn:registkemah:metadata"><camp:layout>companion-card-v1</camp:layout></rdf:Description></rdf:RDF></x:xmpmeta>',
+    )
+    .png()
+    .toBuffer();
+}
+
+function companionLabel(patrol: Patrol, fallback: string) {
+  const companions = patrolCompanions(patrol);
+  return `Pembina: ${companions.length ? companions.map((c) => `${c.name}${c.phone ? ` | WhatsApp ${c.phone}` : ""}`).join("; ") : fallback}`;
 }
 
 export async function renderRegistrationPdf(
@@ -385,7 +467,7 @@ export async function renderRegistrationPdf(
       3,
     );
     paragraph(
-      `Pembina: ${patrol.companion || registration.school.contact}${patrol.phone ? ` | WhatsApp ${patrol.phone}` : ""}`,
+      companionLabel(patrol, registration.school.contact),
       false,
       7.5,
       5,
@@ -418,7 +500,7 @@ export async function renderRegistrationPdf(
       );
       doc.font("Body").fontSize(7.5);
       const companionHeight = doc.heightOfString(
-        `Pembina: ${patrol.companion || registration.school.contact}${patrol.phone ? ` | WhatsApp ${patrol.phone}` : ""}`,
+        companionLabel(patrol, registration.school.contact),
         { width },
       );
       const blockHeight =

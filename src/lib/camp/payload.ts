@@ -1,4 +1,4 @@
-import type { Registration } from "./types";
+import { patrolCompanions, type Registration } from "./types";
 export function draftPayload(reg: Registration) {
   const school = Object.fromEntries(
     Object.entries(reg.school).filter(([key]) => key !== "email"),
@@ -9,6 +9,15 @@ export function draftPayload(reg: Registration) {
     patrols: reg.patrols.map((p) => ({
       ...p,
       leaderId: p.leaderId || null,
+      companions: patrolCompanions(p).map((c) => ({
+        id: c.id,
+        name: c.name,
+        phone: c.phone,
+        photoId: c.photoId || null,
+        zoom: c.zoom,
+        x: c.x,
+        y: c.y,
+      })),
       participants: p.participants.map((m) => ({
         id: m.id,
         name: m.name,

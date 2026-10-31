@@ -26,15 +26,22 @@ export function LiveIdCards({ id }: { id: string }) {
   const { registration: reg, error: registrationError } = useRegistration(id);
   const [cards, setCards] = useState<Cards | null>(null);
   const [patrolId, setPatrolId] = useState("");
+  const [kind, setKind] = useState<"participants" | "companions">(
+    "participants",
+  );
   const [error, setError] = useState("");
   const [loaded, setLoaded] = useState<string[]>([]);
   useEffect(() => {
     const controller = new AbortController();
     const load = () => {
-      void campRequest<Cards>(`/api/admin/registrations/${id}/cards`, {
-        signal: controller.signal,
-      })
+      void campRequest<Cards>(
+        `/api/admin/registrations/${id}/cards?kind=${kind}`,
+        {
+          signal: controller.signal,
+        },
+      )
         .then((data) => {
+          if (controller.signal.aborted) return;
           setCards(data);
           setError("");
         })
@@ -48,7 +55,7 @@ export function LiveIdCards({ id }: { id: string }) {
       controller.abort();
       clearInterval(timer);
     };
-  }, [id]);
+  }, [id, kind]);
   const active =
     reg?.status === "Terverifikasi" &&
     cards?.status === "Siap" &&
@@ -63,11 +70,11 @@ export function LiveIdCards({ id }: { id: string }) {
         Kembali ke pemeriksaan
       </Link>
       <PageHeading
-        title="ID card peserta"
+        title={kind === "companions" ? "ID card pembina" : "ID card peserta"}
         description={
           reg
             ? `${reg.school.name} · ${reg.number} · Versi ${reg.version}`
-            : "Memuat kartu peserta…"
+            : "Memuat kartu…"
         }
       >
         <Button
@@ -77,10 +84,34 @@ export function LiveIdCards({ id }: { id: string }) {
           }
         >
           <Printer />
-          Cetak kartu peserta
+          Cetak kartu {kind === "companions" ? "pembina" : "peserta"}
         </Button>
       </PageHeading>
       <div className="no-print">
+        <div className="status-tabs" role="group" aria-label="Jenis ID card">
+          <button
+            className={kind === "participants" ? "active" : ""}
+            aria-pressed={kind === "participants"}
+            onClick={() => {
+              setKind("participants");
+              setCards(null);
+              setLoaded([]);
+            }}
+          >
+            Peserta
+          </button>
+          <button
+            className={kind === "companions" ? "active" : ""}
+            aria-pressed={kind === "companions"}
+            onClick={() => {
+              setKind("companions");
+              setCards(null);
+              setLoaded([]);
+            }}
+          >
+            Pembina
+          </button>
+        </div>
         <Notice title="Khusus panitia · ukuran cetak 55 × 85 mm">
           Gunakan kertas A4, skala 100%, dan aktifkan grafik latar. Berikan
           kartu fisik kepada operator setelah formulir pendaftaran diterima.
@@ -124,6 +155,13 @@ export function LiveIdCards({ id }: { id: string }) {
               {rows.length} kartu · versi {cards.version} · tiga kolom A4
             </p>
           </div>
+          {!rows.length && (
+            <EmptyState title="Belum ada kartu sesuai filter">
+              {kind === "companions"
+                ? "Pembina tampil dari data pendaftaran yang sudah disetujui."
+                : "Coba pilih regu lain atau semua regu."}
+            </EmptyState>
+          )}
           <div className="idcard-grid">
             {rows.map((c, index) => (
               <MotionReveal

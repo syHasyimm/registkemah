@@ -14,7 +14,11 @@ const nextConfig: NextConfig = {
     "write-excel-file",
   ],
   outputFileTracingIncludes: {
-    "/*": ["./assets/**/*", "./public/images/participants/*"],
+    "/*": [
+      "./assets/**/*",
+      "./public/images/participants/*",
+      "./public/images/companions/*",
+    ],
     "/api/admin/certificates/generate": [
       "./public/images/Template Sertifikat.png",
     ],

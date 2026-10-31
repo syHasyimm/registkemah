@@ -24,9 +24,42 @@ export type Patrol = {
   name: string;
   companion: string;
   phone: string;
+  companions?: Companion[];
   leaderId: string;
   participants: Participant[];
 };
+export type Companion = {
+  id: string;
+  name: string;
+  phone: string;
+  photoId?: string | null;
+  photo: string;
+  zoom: number;
+  x: number;
+  y: number;
+};
+export const MAX_COMPANIONS_PER_PATROL = 20;
+// Historical approvals are immutable. Their original patrol UUID also identifies
+// the single legacy companion, matching the additive migration's backfill.
+export function patrolCompanions(
+  patrol: Pick<Patrol, "id" | "companion" | "phone" | "companions">,
+): Companion[] {
+  if (patrol.companions !== undefined) return patrol.companions;
+  return patrol.companion.trim() || patrol.phone.trim()
+    ? [
+        {
+          id: patrol.id,
+          name: patrol.companion,
+          phone: patrol.phone,
+          photoId: null,
+          photo: "",
+          zoom: 1,
+          x: 50,
+          y: 50,
+        },
+      ]
+    : [];
+}
 export type School = {
   name: string;
   contact: string;
@@ -149,13 +182,21 @@ export function registrationErrors(reg: Registration) {
       errors.push(
         `${label}: lengkapi nama dan pangkalan setiap peserta, atau hapus baris kosong.`,
       );
-    if (p.phone && !p.companion.trim())
-      errors.push(`${label}: isi nama pembina pendamping jika WhatsApp diisi.`);
-    if (
-      p.phone &&
-      !/^(?:\+62|08)\d{7,13}$/.test(p.phone.replace(/[\s()-]/g, ""))
-    )
-      errors.push(`${label}: nomor WhatsApp pembina belum valid.`);
+    if (patrolCompanions(p).length > MAX_COMPANIONS_PER_PATROL)
+      errors.push(
+        `${label}: maksimal ${MAX_COMPANIONS_PER_PATROL} pembina per regu.`,
+      );
+    for (const [index, companion] of patrolCompanions(p).entries()) {
+      if (!companion.name.trim())
+        errors.push(`${label}: isi nama pembina pendamping ${index + 1}.`);
+      if (
+        companion.phone &&
+        !/^(?:\+62|08)\d{7,13}$/.test(companion.phone.replace(/[\s()-]/g, ""))
+      )
+        errors.push(
+          `${label}: nomor WhatsApp pembina ${index + 1} belum valid.`,
+        );
+    }
   }
   return [...new Set(errors)];
 }

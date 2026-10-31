@@ -15,8 +15,12 @@ import {
   hasCurrentParticipantCard,
   REGISTRATION_PDF_LAYOUT,
   renderParticipantCard,
+  renderCompanionCard,
   renderRegistrationPdf,
 } from "./camp-render.service";
+import { patrolCompanions } from "@/lib/camp/types";
+import { formatCertificateName } from "@/lib/camp/certificates";
+import { getCompanionPhotoAny } from "./camp-companion-photos.service";
 const unavailable = () =>
   new ServiceError(
     404,
@@ -89,6 +93,50 @@ export function getRegistrationDocument(userId: string, id: string) {
 }
 export function getRegistrationDocumentAny(id: string) {
   return document(id);
+}
+export async function listRegistrationCompanionCardsAny(id: string) {
+  const { approval } = await activeApproval(id);
+  return {
+    version: approval.version,
+    status: "Siap",
+    data: approval.snapshot.patrols.flatMap((patrol) =>
+      patrolCompanions(patrol)
+        .filter((c) => c.name.trim())
+        .map((c) => ({
+          id: c.id,
+          patrolId: patrol.id,
+          patrolName: patrol.name,
+          category: patrol.category,
+          name: formatCertificateName(c.name),
+          base: approval.snapshot.school.name,
+          imageUrl: `/api/admin/registrations/${id}/companions/${c.id}/card`,
+        })),
+    ),
+  };
+}
+export async function getRegistrationCompanionCardAny(
+  id: string,
+  companionId: string,
+) {
+  const { approval } = await activeApproval(id);
+  const patrol = approval.snapshot.patrols.find((p) =>
+    patrolCompanions(p).some((c) => c.id === companionId && c.name.trim()),
+  );
+  const companion =
+    patrol && patrolCompanions(patrol).find((c) => c.id === companionId);
+  if (!patrol || !companion) throw unavailable();
+  const photo = companion.photoId
+    ? await getCompanionPhotoAny(id, companion.photoId)
+    : undefined;
+  const bytes = await renderCompanionCard(
+    companion,
+    approval.snapshot.school.name,
+    patrol,
+    photo,
+  );
+  if ((await activeApproval(id)).approval.id !== approval.id)
+    throw unavailable();
+  return bytes;
 }
 export async function listRegistrationCardsAny(id: string) {
   const { approval } = await activeApproval(id);

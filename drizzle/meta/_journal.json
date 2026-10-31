@@ -43,6 +43,13 @@
       "when": 1792528621299,
       "tag": "0005_supreme_butterfly",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793431483374,
+      "tag": "0006_clammy_stone_men",
+      "breakpoints": true
     }
   ]
 }

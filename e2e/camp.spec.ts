@@ -412,7 +412,9 @@ test("persisted registration, private photos, approval jobs, PDF, email, card ac
   const pdfBytes = await pdf.body();
   expect(pdfBytes.subarray(0, 5).toString()).toBe("%PDF-");
   expect(pdfBytes.toString("latin1").match(/\/Type \/Page\b/g)).toHaveLength(1);
-  expect(pdfBytes.includes(Buffer.from("registration-form-v4"))).toBe(true);
+  expect(
+    pdfBytes.includes(Buffer.from("registration-form-v5-companions")),
+  ).toBe(true);
   await writeFile(testInfo.outputPath("formulir-v1.pdf"), pdfBytes);
   expect(
     (await other.client.get(`/api/registrations/${reg.id}/document`)).status(),
@@ -827,7 +829,7 @@ test("registration PDF separates fifteen boys and girls and refreshes a legacy a
     const file = path.join(process.env.PRIVATE_STORAGE_DIR!, document.file_key);
     const original = await readFile(file);
     const legacy = Buffer.from(original);
-    const marker = legacy.indexOf("registration-form-v4");
+    const marker = legacy.indexOf("registration-form-v5-companions");
     expect(marker).toBeGreaterThanOrEqual(0);
     Buffer.from("registration-form-v3").copy(legacy, marker);
     await writeFile(file, legacy);
@@ -839,9 +841,9 @@ test("registration PDF separates fifteen boys and girls and refreshes a legacy a
         const refreshed = await client.get(endpoint);
         expect(refreshed.status()).toBe(200);
         const current = await refreshed.body();
-        expect(current.includes(Buffer.from("registration-form-v4"))).toBe(
-          true,
-        );
+        expect(
+          current.includes(Buffer.from("registration-form-v5-companions")),
+        ).toBe(true);
         expect(
           current.toString("latin1").match(/\/Type \/Page\b/g),
         ).toHaveLength(2);

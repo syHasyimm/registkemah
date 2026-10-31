@@ -9,6 +9,8 @@ export * from "./schools";
 export * from "./registrations";
 export * from "./patrols";
 export * from "./participants";
+export * from "./patrol-companions";
+export * from "./companion-photos";
 export * from "./participant-photos";
 export * from "./registration-status-history";
 export * from "./registration-approvals";

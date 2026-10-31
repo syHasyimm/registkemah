@@ -63,6 +63,7 @@ type CampContextValue = {
     file: File,
     progress: (value: number) => void,
     signal: AbortSignal,
+    target?: "participants" | "companions",
   ) => Promise<{ photoId: string; photo: string }>;
   notify: (message: string) => void;
 };
@@ -345,15 +346,21 @@ function LiveWorkspace({
     file: File,
     progress: (value: number) => void,
     signal: AbortSignal,
+    target: "participants" | "companions" = "participants",
   ) {
+    const resource = target === "companions" ? "companion-photos" : "photos";
     const initialized = await campRequest<{ data: { id: string } }>(
-      `/api/registrations/${reg.id}/photos`,
+      `/api/registrations/${reg.id}/${resource}`,
       {
         method: "POST",
-        body: JSON.stringify({ participantId, revision: reg.revision || 0 }),
+        body: JSON.stringify({
+          [target === "companions" ? "companionId" : "participantId"]:
+            participantId,
+          revision: reg.revision || 0,
+        }),
       },
     );
-    const endpoint = `/api/registrations/${reg.id}/photos/${initialized.data.id}`;
+    const endpoint = `/api/registrations/${reg.id}/${resource}/${initialized.data.id}`;
     try {
       return await new Promise<{ photoId: string; photo: string }>(
         (resolve, reject) => {

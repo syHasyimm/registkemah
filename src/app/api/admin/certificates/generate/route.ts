@@ -20,7 +20,9 @@ export function POST(request: Request) {
         "application/pdf",
         input.kind === "participants"
           ? "sertifikat-peserta.pdf"
-          : "sertifikat-panitia.pdf",
+          : input.kind === "companions"
+            ? "sertifikat-pembina.pdf"
+            : "sertifikat-panitia.pdf",
       );
     },
   );

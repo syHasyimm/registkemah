@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { MAX_COMPANIONS_PER_PATROL } from "@/lib/camp/types";
 const clean = (length: number) =>
   z
     .string()
@@ -37,12 +38,29 @@ export const participantInputSchema = z
     y: z.number().min(0).max(100),
   })
   .strict();
+export const companionInputSchema = z
+  .object({
+    id: campIdSchema,
+    name: clean(150),
+    phone: clean(24).transform((v) =>
+      v.replace(/[\s()-]/g, "").replace(/^0/, "+62"),
+    ),
+    photoId: campIdSchema.nullable(),
+    zoom: z.number().min(1).max(2.5),
+    x: z.number().min(0).max(100),
+    y: z.number().min(0).max(100),
+  })
+  .strict();
 export const patrolInputSchema = z
   .object({
     id: campIdSchema,
     category: z.enum(["Putri", "Putra"]),
     name: clean(80),
-    companion: clean(120),
+    companion: clean(150),
+    companions: z
+      .array(companionInputSchema)
+      .max(MAX_COMPANIONS_PER_PATROL)
+      .optional(),
     phone: clean(24).transform((v) =>
       v.replace(/[\s()-]/g, "").replace(/^0/, "+62"),
     ),
@@ -81,6 +99,15 @@ export const saveRegistrationSchema = z
         path: ["patrols"],
         message: "Identitas regu dan peserta tidak boleh berulang.",
       });
+    const companionIds = value.patrols.flatMap((p) =>
+      (p.companions || []).map((c) => c.id),
+    );
+    if (new Set(companionIds).size !== companionIds.length)
+      ctx.addIssue({
+        code: "custom",
+        path: ["patrols"],
+        message: "Identitas pembina tidak boleh berulang.",
+      });
   });
 export type SaveRegistrationInput = z.infer<typeof saveRegistrationSchema>;
 export const submitRegistrationSchema = z
@@ -99,6 +126,9 @@ export const decisionSchema = z
   });
 export const photoInitSchema = z
   .object({ participantId: campIdSchema, revision: revisionSchema })
+  .strict();
+export const companionPhotoInitSchema = z
+  .object({ companionId: campIdSchema, revision: revisionSchema })
   .strict();
 export const retryJobSchema = z
   .object({ kind: z.enum(["document", "cards", "email"]) })

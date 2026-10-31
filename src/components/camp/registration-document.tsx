@@ -20,7 +20,7 @@ import {
   RegistrationSummary,
   StatusBadge,
 } from "./common";
-import { totals } from "@/lib/camp/types";
+import { totals, patrolCompanions } from "@/lib/camp/types";
 
 export function RegistrationDocument({
   registrationId,
@@ -298,8 +298,15 @@ export function RegistrationDocument({
                       peserta
                     </h3>
                     <p>
-                      Pembina: {p.companion || "Penanggung jawab utama"}{" "}
-                      {p.phone}
+                      Pembina:{" "}
+                      {patrolCompanions(p).length
+                        ? patrolCompanions(p)
+                            .map(
+                              (c) =>
+                                `${c.name}${c.phone ? ` · ${c.phone}` : ""}`,
+                            )
+                            .join("; ")
+                        : "Penanggung jawab utama"}
                     </p>
                     <table>
                       <thead>

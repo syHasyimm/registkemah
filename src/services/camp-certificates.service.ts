@@ -5,9 +5,12 @@ import { registrations, registrationApprovals } from "@/db/schema";
 import type { CertificateRecipient } from "@/lib/camp/certificates";
 import { ServiceError } from "@/lib/service-error";
 import type { GenerateCertificatesInput } from "@/validators/certificates";
+import { patrolCompanions } from "@/lib/camp/types";
 
 // Read the active, approved snapshot. Generating a certificate never edits a registration.
-export async function listCertificateParticipantsAny() {
+async function listCertificateRecipientsAny(
+  kind: "participants" | "companions",
+) {
   const recipients: CertificateRecipient[] = [];
   let cursor: string | undefined;
   for (;;) {
@@ -36,12 +39,14 @@ export async function listCertificateParticipantsAny() {
       .limit(100);
     for (const { id, snapshot } of rows) {
       for (const patrol of snapshot.patrols) {
-        for (const participant of patrol.participants) {
+        for (const participant of kind === "companions"
+          ? patrolCompanions(patrol)
+          : patrol.participants) {
           if (!participant.name.trim()) continue;
           recipients.push({
             key: participant.id,
             name: participant.name,
-            position: "Peserta",
+            position: kind === "companions" ? "Pembina Pendamping" : "Peserta",
             registrationId: id,
             school: snapshot.school.name,
             patrolId: patrol.id,
@@ -56,13 +61,17 @@ export async function listCertificateParticipantsAny() {
   }
   return recipients;
 }
+export const listCertificateParticipantsAny = () =>
+  listCertificateRecipientsAny("participants");
+export const listCertificateCompanionsAny = () =>
+  listCertificateRecipientsAny("companions");
 
 export async function resolveCertificateRecipientsAny(
   input: GenerateCertificatesInput,
 ) {
   if (input.kind === "committee") return input.recipients;
   const available = new Map(
-    (await listCertificateParticipantsAny()).map((person) => [
+    (await listCertificateRecipientsAny(input.kind)).map((person) => [
       person.key,
       person,
     ]),
@@ -73,7 +82,7 @@ export async function resolveCertificateRecipientsAny(
       throw new ServiceError(
         409,
         "CERTIFICATE_PARTICIPANT_UNAVAILABLE",
-        "Ada peserta yang tidak lagi terverifikasi. Muat ulang daftar dan pilih kembali.",
+        "Ada penerima yang tidak lagi terverifikasi. Muat ulang daftar dan pilih kembali.",
       );
     return person;
   });

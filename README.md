@@ -8,7 +8,7 @@ Untuk membuat akun panitia, isi `PANITIA_EMAIL`, `PANITIA_NAME`, dan `PANITIA_PA
 
 Setiap akun memiliki satu role: operator hanya memakai `/app`, sedangkan admin/panitia hanya memakai `/admin`. Pendaftaran publik selalu membuat operator. Login memilih dashboard secara otomatis; penetapan role mengganti role lama.
 
-Admin/panitia dapat membuka `/admin/sertifikat` untuk membuat PDF sertifikat dari peserta terverifikasi atau unggahan Excel panitia berkolom Nama dan Jabatan. Nomor sertifikat tetap sesuai template. Fitur ini tidak memerlukan migration baru dan tidak mengubah data registrasi; lihat [panduan sertifikat](docs/camp-backend.md#sertifikat-peserta-dan-panitia).
+Operator dapat menambah beberapa pembina per regu beserta foto opsional. Admin/panitia dapat mencetak ID card pembina dari detail pendaftaran dan membuka `/admin/sertifikat` untuk membuat sertifikat peserta/pembina terverifikasi atau panitia dari Excel berkolom Nama dan Jabatan. Nomor sertifikat tetap sesuai template. Migrasi tambahan `0006` mempertahankan data lama tanpa reset; lihat [panduan pembina](docs/camp-backend.md#pembina-pendamping) dan [panduan sertifikat](docs/camp-backend.md#sertifikat-peserta-pembina-dan-panitia).
 
 ## Fondasi starter
 

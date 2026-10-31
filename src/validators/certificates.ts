@@ -16,6 +16,18 @@ export const committeeCertificateSchema = z
 export const generateCertificatesSchema = z.discriminatedUnion("kind", [
   z
     .object({
+      kind: z.literal("companions"),
+      ids: z
+        .array(z.uuid())
+        .min(1)
+        .max(MAX_CERTIFICATES_PER_PDF)
+        .refine((ids) => new Set(ids).size === ids.length, {
+          message: "Pembina yang dipilih tidak boleh berulang.",
+        }),
+    })
+    .strict(),
+  z
+    .object({
       kind: z.literal("participants"),
       ids: z
         .array(z.uuid())

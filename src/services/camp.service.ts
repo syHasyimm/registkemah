@@ -18,6 +18,8 @@ import {
   campJobs,
   events,
   participantPhotos,
+  companionPhotos,
+  patrolCompanions as companionRows,
   participants,
   patrols,
   registrationApprovals,
@@ -132,6 +134,18 @@ export async function mapRegistrations(
         )
         .orderBy(asc(participants.position))
     : [];
+  const companions = allPatrols.length
+    ? await executor
+        .select()
+        .from(companionRows)
+        .where(
+          inArray(
+            companionRows.patrolId,
+            allPatrols.map((p) => p.id),
+          ),
+        )
+        .orderBy(asc(companionRows.position))
+    : [];
   const jobs = approvals.length
     ? await executor
         .select()
@@ -180,6 +194,20 @@ export async function mapRegistrations(
           name: p.name,
           companion: p.companion,
           phone: p.phone,
+          companions: companions
+            .filter((c) => c.patrolId === p.id)
+            .map((c) => ({
+              id: c.id,
+              name: c.name,
+              phone: c.phone,
+              photoId: c.photoId,
+              photo: c.photoId
+                ? `${admin ? "/api/admin/registrations" : "/api/registrations"}/${row.id}/companion-photos/${c.photoId}`
+                : "",
+              zoom: c.zoom,
+              x: c.x,
+              y: c.y,
+            })),
           leaderId: p.leaderId || "",
           participants: members
             .filter((m) => m.patrolId === p.id)
@@ -395,7 +423,18 @@ async function assertNoPendingUploads(tx: CampExecutor, id: string) {
       ),
     )
     .limit(1);
-  if (pending)
+  const [pendingCompanion] = await tx
+    .select({ id: companionPhotos.id })
+    .from(companionPhotos)
+    .where(
+      and(
+        eq(companionPhotos.registrationId, id),
+        eq(companionPhotos.status, "Pending"),
+        sql`${companionPhotos.expiresAt} > now()`,
+      ),
+    )
+    .limit(1);
+  if (pending || pendingCompanion)
     throw new ServiceError(
       409,
       "UPLOAD_PENDING",
@@ -444,6 +483,94 @@ export async function saveRegistration(
             "Foto peserta tidak tersedia atau bukan milik peserta tersebut.",
           );
       const patrolIds = input.patrols.map((p) => p.id);
+      const existingCompanions = await tx
+        .select({ companion: companionRows })
+        .from(companionRows)
+        .innerJoin(patrols, eq(patrols.id, companionRows.patrolId))
+        .where(eq(patrols.registrationId, id));
+      for (const patrol of input.patrols) {
+        if (patrol.companions !== undefined) continue;
+        const existing = existingCompanions
+          .filter((c) => c.companion.patrolId === patrol.id)
+          .map((c) => c.companion);
+        if (existing.length > 1)
+          throw new ServiceError(
+            409,
+            "UPDATE_REQUIRED",
+            "Daftar pembina telah diperbarui. Muat ulang halaman sebelum menyimpan agar semua pembina tetap tersimpan.",
+          );
+        patrol.companions =
+          patrol.companion.trim() || patrol.phone.trim()
+            ? [
+                {
+                  id: existing[0]?.id || patrol.id,
+                  name: patrol.companion,
+                  phone: patrol.phone,
+                  photoId: existing[0]?.photoId || null,
+                  zoom: existing[0]?.zoom || 1,
+                  x: existing[0]?.x ?? 50,
+                  y: existing[0]?.y ?? 50,
+                },
+              ]
+            : [];
+      }
+      const companions = input.patrols.flatMap((p) => p.companions || []);
+      const companionIds = companions.map((c) => c.id);
+      if (new Set(companionIds).size !== companionIds.length)
+        throw new ServiceError(
+          422,
+          "INVALID_ID",
+          "Identitas pembina tidak boleh berulang.",
+        );
+      if (companionIds.length) {
+        const conflicting = await tx
+          .select({ id: companionRows.id })
+          .from(companionRows)
+          .innerJoin(patrols, eq(patrols.id, companionRows.patrolId))
+          .where(
+            and(
+              inArray(companionRows.id, companionIds),
+              ne(patrols.registrationId, id),
+            ),
+          )
+          .limit(1);
+        if (conflicting.length)
+          throw new ServiceError(
+            422,
+            "INVALID_ID",
+            "Identitas pembina tidak valid.",
+          );
+      }
+      const companionPhotoIds = companions.flatMap((c) =>
+        c.photoId ? [c.photoId] : [],
+      );
+      const readyCompanionPhotos = companionPhotoIds.length
+        ? await tx
+            .select()
+            .from(companionPhotos)
+            .where(
+              and(
+                inArray(companionPhotos.id, companionPhotoIds),
+                eq(companionPhotos.registrationId, id),
+                eq(companionPhotos.status, "Ready"),
+              ),
+            )
+        : [];
+      for (const companion of companions) {
+        if (
+          companion.photoId &&
+          !readyCompanionPhotos.some(
+            (photo) =>
+              photo.id === companion.photoId &&
+              photo.companionId === companion.id,
+          )
+        )
+          throw new ServiceError(
+            422,
+            "INVALID_PHOTO",
+            "Foto pembina tidak tersedia atau bukan milik pembina tersebut.",
+          );
+      }
       const memberIds = input.patrols.flatMap((p) =>
         p.participants.map((m) => m.id),
       );
@@ -497,8 +624,8 @@ export async function saveRegistration(
             registrationId: id,
             category: p.category,
             name: p.name,
-            companion: p.companion,
-            phone: p.phone,
+            companion: p.companions?.[0]?.name || "",
+            phone: p.companions?.[0]?.phone || "",
             leaderId: p.leaderId,
             position,
           })),
@@ -512,6 +639,15 @@ export async function saveRegistration(
       );
       if (memberValues.length)
         await tx.insert(participants).values(memberValues);
+      const companionValues = input.patrols.flatMap((p) =>
+        (p.companions || []).map((c, position) => ({
+          ...c,
+          patrolId: p.id,
+          position,
+        })),
+      );
+      if (companionValues.length)
+        await tx.insert(companionRows).values(companionValues);
       await tx
         .update(registrations)
         .set({

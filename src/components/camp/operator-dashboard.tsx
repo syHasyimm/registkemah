@@ -26,6 +26,7 @@ import {
 } from "./common";
 import {
   editable,
+  patrolCompanions,
   formatTime,
   registrationErrors,
   registrationOpen,
@@ -197,7 +198,10 @@ export function OperatorDashboard() {
                       <strong>{p.name || "Regu belum diberi nama"}</strong>
                       <p>
                         Regu {p.category} ·{" "}
-                        {p.companion || "Pembina utama sekolah"}
+                        {patrolCompanions(p)
+                          .map((c) => c.name)
+                          .filter(Boolean)
+                          .join(", ") || "Pembina utama sekolah"}
                       </p>
                     </div>
                     <span>

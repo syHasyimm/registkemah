@@ -24,6 +24,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { MotionStep } from "@/components/motion";
 import { Field } from "./fields";
+import { CompanionEditor } from "./companion-editor";
 import {
   Confirm,
   Notice,
@@ -35,12 +36,14 @@ import {
 import { useCamp } from "./workspace";
 import {
   duplicateNames,
+  patrolCompanions,
   editable,
   formatTime,
   registrationErrors,
   registrationOpen,
   totals,
   type Category,
+  type Companion,
   type Participant,
   type Patrol,
   type Registration,
@@ -227,6 +230,17 @@ export function RegistrationForm() {
         m.id === participantId ? { ...m, ...updates } : m,
       ),
     }));
+  const companion = (
+    patrolId: string,
+    companionId: string,
+    updates: Partial<Companion>,
+  ) =>
+    patrol(patrolId, (p) => ({
+      ...p,
+      companions: patrolCompanions(p).map((c) =>
+        c.id === companionId ? { ...c, ...updates } : c,
+      ),
+    }));
   async function save(next = form): Promise<Registration | false> {
     if (pending) return false;
     const latest = data.registrations.find((reg) => reg.id === form.id);
@@ -365,6 +379,7 @@ export function RegistrationForm() {
     file: File | undefined,
     patrolId: string,
     participantId: string,
+    target: "participants" | "companions" = "participants",
   ) {
     if (!file || readingPhotos.length || pending) return;
     setPhotoErrors((previous) => ({ ...previous, [participantId]: "" }));
@@ -398,8 +413,13 @@ export function RegistrationForm() {
               [participantId]: value,
             })),
           controller.signal,
+          target,
         );
-        member(patrolId, participantId, { ...uploaded, zoom: 1, x: 50, y: 50 });
+        (target === "companions" ? companion : member)(
+          patrolId,
+          participantId,
+          { ...uploaded, zoom: 1, x: 50, y: 50 },
+        );
         return;
       }
       const bitmap = await createImageBitmap(file);
@@ -412,7 +432,12 @@ export function RegistrationForm() {
       context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
       bitmap.close();
       const photo = canvas.toDataURL("image/webp", 0.85);
-      member(patrolId, participantId, { photo, zoom: 1, x: 50, y: 50 });
+      (target === "companions" ? companion : member)(patrolId, participantId, {
+        photo,
+        zoom: 1,
+        x: 50,
+        y: 50,
+      });
     } catch (error) {
       setPhotoErrors((previous) => ({
         ...previous,
@@ -803,33 +828,25 @@ export function RegistrationForm() {
                                       ))}
                                   </select>
                                 </Field>
-                                <Field
-                                  label="Pembina pendamping regu"
-                                  optional
-                                  value={p.companion}
-                                  maxLength={120}
-                                  onChange={(e) =>
-                                    patrol(p.id, (previous) => ({
-                                      ...previous,
-                                      companion: e.target.value,
-                                    }))
-                                  }
-                                  placeholder="Jika berbeda dari pembina utama"
-                                />
-                                <Field
-                                  label="WhatsApp pembina pendamping"
-                                  optional
-                                  type="tel"
-                                  value={p.phone}
-                                  maxLength={20}
-                                  onChange={(e) =>
-                                    patrol(p.id, (previous) => ({
-                                      ...previous,
-                                      phone: e.target.value,
-                                    }))
-                                  }
-                                />
                               </div>
+                              <CompanionEditor
+                                patrol={p}
+                                onChange={(companions) =>
+                                  patrol(p.id, (current) => ({
+                                    ...current,
+                                    companions,
+                                  }))
+                                }
+                                onPhoto={(file, id) =>
+                                  void readPhoto(file, p.id, id, "companions")
+                                }
+                                reading={readingPhotos}
+                                progress={uploadProgress}
+                                errors={photoErrors}
+                                onCancel={(id) =>
+                                  uploadControllers.current[id]?.abort()
+                                }
+                              />
                               <div className="patrol-actions">
                                 <div>
                                   <strong>Anggota regu</strong>

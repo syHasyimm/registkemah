@@ -83,27 +83,51 @@ Migrasi `0005` menormalkan role lama menjadi satu nilai: `admin` mengambil prior
 - Nama peserta sama menjadi peringatan. Nama regu sama dalam kategori yang sama ditolak saat pengiriman; nama regu sama lintas kategori diizinkan.
 - API membatasi request JSON sampai 2 MB dan maksimal 100 regu per pendaftaran sebagai batas sumber daya. Semua regu yang disimpan diproses; ekspor tidak dibatasi oleh satu halaman daftar.
 
-## Sertifikat peserta dan panitia
+## Pembina pendamping
+
+Pada langkah **Regu & peserta**, operator dapat menambah atau menghapus pembina per regu (maksimal 20). Setiap baris berisi nama, WhatsApp opsional, dan foto opsional. Baris kosong boleh disimpan sebagai draf, tetapi nama wajib dilengkapi sebelum mengirim. Pembina tidak masuk hitungan 8–15 anggota regu. Ringkasan dan formulir PDF memuat seluruh pembina beserta kontak yang diisi.
+
+Foto pembina memakai alur unggahan privat, batas ukuran, pemeriksaan gambar, crop, dan pembatalan yang sama dengan foto peserta. Foto selalu terikat pada pembina dan pendaftaran milik operator. Tanpa foto, ringkasan pembina dan kartu menampilkan ilustrasi pembina lokal. Menghapus foto dari draf tidak menghapus berkas versi persetujuan sebelumnya.
+
+Migrasi tambahan **`0006_clammy_stone_men.sql`** membuat `patrol_companions` dan `companion_photos`, lalu menyalin nama/kontak pembina lama tanpa menghapus kolom `patrols.companion` dan `patrols.phone`. Draft parsial yang hanya mempunyai nomor telepon juga disalin. Identitas pembina hasil salinan memakai UUID regu di tabel berbeda, sehingga cocok dengan pembacaan snapshot lama. Migrasi tidak menulis ulang registrasi, persetujuan, atau tabel lama. Jalankan `npm run db:migrate`; **jangan menjalankan reset/fresh migration**. Sebelum menerapkan di server lain, buat backup database dan `PRIVATE_STORAGE_DIR` bersama-sama.
+
+Payload simpan baru memakai `patrols[].companions` berisi `{id, name, phone, photoId, zoom, x, y}`. Kolom lama dicerminkan dari pembina pertama agar tetap kompatibel. Browser lama yang mengirim payload tanpa array pembina masih diterima bila regu memiliki paling banyak satu pembina; jika sudah lebih dari satu, server menolak dengan 409 `UPDATE_REQUIRED` dan meminta muat ulang agar nama lain tidak hilang.
+
+Panitia membuka **ID card** dari detail pendaftaran terverifikasi, lalu memilih **Pembina**. Kartu dibuat dari snapshot persetujuan aktif dengan template yang sama, ukuran cetak **55 × 85 mm**, nama berformat `Satya Satria Shiddiqi`, sekolah, regu, dan jabatan **Pembina Pendamping**. Nama/jabatan memakai League Spartan Bold. Kartu pembina dirender saat dibaca, terpisah dari antrean kartu peserta. Snapshot lama yang belum mempunyai array pembina tetap dapat menghasilkan satu kartu dan sertifikat tanpa persetujuan ulang atau perubahan data.
+
+Menambah atau mengubah pembina pada pendaftaran yang sudah disetujui mengikuti alur **Perlu perbaikan → simpan → kirim → verifikasi**. Persetujuan lama dinonaktifkan selama revisi. Semua unduhan kartu dan sertifikat memeriksa persetujuan aktif; URL kartu selalu menampilkan versi aktif yang tersedia.
+
+| Endpoint                                                          | Perilaku                                                         |
+| ----------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `POST /api/registrations/:id/companion-photos`                    | Membuka unggahan milik pembina dengan `{revision, companionId}`  |
+| `GET/PUT/DELETE /api/registrations/:id/companion-photos/:photoId` | Membaca, mengunggah, atau membatalkan foto privat milik operator |
+| `GET /api/admin/registrations/:id/companion-photos/:photoId`      | Foto privat untuk pemeriksaan staf                               |
+| `GET /api/admin/registrations/:id/cards?kind=companions`          | Daftar kartu pembina dari persetujuan aktif                      |
+| `GET /api/admin/registrations/:id/companions/:companionId/card`   | PNG kartu pembina privat untuk staf                              |
+
+## Sertifikat peserta, pembina, dan panitia
 
 Buka **Sertifikat** di dashboard admin/panitia (`/admin/sertifikat`). Nomor tetap **001/0803/KBP/2026**, termasuk pada PDF gabungan. Nomor, isi kegiatan, tanggal, tanda tangan, dan stempel mengikuti gambar `public/images/Template Sertifikat.png`. Hanya nama dan jabatan pada pita merah yang diganti. PDF memakai A4 landscape, satu penerima per halaman.
 
-Nama dan jabatan pada sertifikat menggunakan **League Spartan Bold**, disimpan lokal di `assets/fonts/LeagueSpartan-Bold.ttf`. Nama peserta maupun panitia otomatis memakai huruf awal besar pada setiap kata, misalnya `SATYA satria SHIDDIQI` menjadi `Satya Satria Shiddiqi`, termasuk di daftar penerima dan pratinjau. Format ini diterapkan saat ditampilkan/dicetak; nilai nama asli pada registrasi dan hasil impor Excel tetap dipertahankan. Jabatan mengikuti teks yang diisi di Excel.
+Nama dan jabatan pada sertifikat menggunakan **League Spartan Bold**, disimpan lokal di `assets/fonts/LeagueSpartan-Bold.ttf`. Nama peserta, pembina, maupun panitia otomatis memakai huruf awal besar pada setiap kata, misalnya `SATYA satria SHIDDIQI` menjadi `Satya Satria Shiddiqi`, termasuk di daftar penerima dan pratinjau. Format ini diterapkan saat ditampilkan/dicetak; nilai nama asli pada registrasi dan hasil impor Excel tetap dipertahankan. Jabatan mengikuti teks yang diisi di Excel.
 
 - **Peserta:** daftar berasal dari snapshot persetujuan aktif untuk pendaftaran `Terverifikasi`. Filter sekolah/regu atau cari nama, pilih penerima, lalu unduh PDF. Pilihan dipertahankan lintas halaman dan filter; jumlah yang dipilih selalu ditampilkan. Jabatan otomatis `Peserta`. Nama sama tidak digabung. Saat generate, server memeriksa kembali status dan mengambil nama dari database, sehingga browser tidak dapat mengganti nama peserta atau memakai persetujuan yang telah dicabut.
+- **Pembina:** tab **Sertifikat pembina** mengambil seluruh pembina dari snapshot persetujuan aktif dengan jabatan **Pembina Pendamping**. Filter, pilihan, pratinjau, dan unduhan PDF mengikuti alur peserta; pembina tanpa foto tetap bisa mendapat sertifikat. Nomor tetap **001/0803/KBP/2026**.
 - **Panitia:** unduh template Excel kosong, isi kolom `Nama` dan `Jabatan` di baris pertama lembar pertama, lalu unggah `.xlsx`. Urutan kedua kolom boleh ditukar dan kapitalisasi judul diabaikan. Baris kosong diabaikan; baris yang tidak lengkap atau bukan teks ditunjukkan dengan nomor baris dan harus diperbaiki di Excel sebelum unduhan. Nama maksimal 150 karakter dan jabatan 120 karakter. File maksimal 2 MB dan 1.000 baris; ukuran ZIP setelah dibuka juga dibatasi. Nama yang sama tetap menjadi penerima terpisah.
 - Ikon mata menghasilkan pratinjau PDF asli untuk satu penerima. Tautan membuka PDF di tab baru tersedia jika penampil PDF pada perangkat tidak mendukung iframe.
 - Maksimal **200 sertifikat per PDF**. Gunakan filter atau pilihan bertahap untuk jumlah lebih besar; aplikasi menolak pilihan berlebihan dan tidak memotong hasil secara diam-diam.
 
-Fitur ini **tidak menambah tabel atau migration**, tidak mengubah registrasi, dan tidak menyimpan Excel, daftar panitia, atau riwayat penerbitan. Unduh hasil sebelum meninggalkan halaman; unggah kembali Excel untuk sesi berikutnya. Unggahan panitia tidak membuat akun login. Tidak ada email sertifikat yang dikirim otomatis.
+Pembuatan sertifikat sendiri tidak mengubah registrasi atau menyimpan Excel, daftar panitia, maupun riwayat penerbitan. Tabel baru pada migrasi `0006` digunakan untuk input beberapa pembina dan foto privatnya. Unduh hasil sebelum meninggalkan halaman; unggah kembali Excel untuk sesi berikutnya. Unggahan panitia tidak membuat akun login. Tidak ada email sertifikat yang dikirim otomatis.
 
 Halaman dan seluruh API sertifikat memerlukan izin `certificates.generate`, yang diberikan kepada role `admin` dan `panitia`. Operator dan pengunjung anonim tidak dapat mengaksesnya. API POST memeriksa Origin dan memvalidasi input; unduhan/pratinjau memakai respons privat `no-store`.
 
-| Endpoint                                   | Perilaku                                                                                                 |
-| ------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
-| `GET /api/admin/certificates/participants` | Seluruh peserta dari persetujuan aktif, tanpa batas satu halaman daftar                                  |
-| `GET /api/admin/certificates/template`     | Unduh template Excel berkolom Nama dan Jabatan                                                           |
-| `POST /api/admin/certificates/import`      | Baca body biner XLSX; kembalikan penerima valid dan masalah per baris                                    |
-| `POST /api/admin/certificates/generate`    | PDF dari `{kind: "participants", ids: [...]}` atau `{kind: "committee", recipients: [{name, position}]}` |
+| Endpoint                                   | Perilaku                                                                                                                |
+| ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
+| `GET /api/admin/certificates/participants` | Seluruh peserta dari persetujuan aktif, tanpa batas satu halaman daftar                                                 |
+| `GET /api/admin/certificates/companions`   | Seluruh pembina dari persetujuan aktif, termasuk kompatibilitas snapshot lama                                           |
+| `GET /api/admin/certificates/template`     | Unduh template Excel berkolom Nama dan Jabatan                                                                          |
+| `POST /api/admin/certificates/import`      | Baca body biner XLSX; kembalikan penerima valid dan masalah per baris                                                   |
+| `POST /api/admin/certificates/generate`    | PDF dari `{kind: "participants" / "companions", ids: [...]}` atau `{kind: "committee", recipients: [{name, position}]}` |
 
 Template sertifikat dan font disertakan dalam pelacakan build standalone agar tersedia pada deployment Docker. Pengujian fitur ada di `e2e/certificates.spec.ts` dan berjalan melalui `npm run test:e2e -- e2e/certificates.spec.ts` pada PostgreSQL pengujian yang terpisah.
 
@@ -145,13 +169,13 @@ Bytes gambar diperiksa melalui Sharp, bukan ekstensi berkas. Format JPEG/PNG/Web
 
 Unggahan dibuka sebelum transfer agar pengiriman dapat menolak unggahan yang masih berjalan. Unggahan yang terbengkalai kedaluwarsa setelah 20 menit. Hasil foto berupa versi immutable; mengganti atau melepaskan foto tidak menghapus versi yang masih diperlukan persetujuan lama.
 
-Peserta tanpa `photoId` memakai SVG pramuka putra/putri lokal menurut kategori regu pada snapshot persetujuan. Ini hanya pengganti visual, bukan unggahan baru; foto asli tetap dipakai beserta crop-nya. PNG kartu menyertakan penanda `participant-card-v2-scout-avatar` dan kredit ilustrasi pada XMP. Pembacaan kartu lama tanpa foto merender versi baru dari snapshot aktif tanpa menimpa berkas tersimpan atau mengirim email lagi. PDF memakai penanda `registration-form-v4`; unduhan formulir lama otomatis memakai tampilan terkini melalui mekanisme pembaruan yang sudah ada. Hak akses dan pencabutan versi lama tetap diperiksa sebelum dan sesudah pembacaan/render.
+Peserta tanpa `photoId` memakai SVG pramuka putra/putri lokal menurut kategori regu pada snapshot persetujuan. Ini hanya pengganti visual, bukan unggahan baru; foto asli tetap dipakai beserta crop-nya. PNG kartu menyertakan penanda `participant-card-v2-scout-avatar` dan kredit ilustrasi pada XMP. Pembacaan kartu lama tanpa foto merender versi baru dari snapshot aktif tanpa menimpa berkas tersimpan atau mengirim email lagi. PDF memakai penanda `registration-form-v5-companions`; unduhan formulir lama otomatis memakai tampilan terkini melalui mekanisme pembaruan yang sudah ada. Hak akses dan pencabutan versi lama tetap diperiksa sebelum dan sesudah pembacaan/render.
 
 Berkas disimpan di `PRIVATE_STORAGE_DIR`, default `.data/camp`, menggunakan nama UUID buatan server. Direktori ini tidak berada di `public`, diabaikan Git, dan dikecualikan dari build image. Jalur filesystem tidak dikirim ke browser. Untuk produksi gunakan volume persisten dan sertakan database serta direktori ini dalam rencana backup. Jika ada beberapa instance aplikasi, semuanya harus membaca penyimpanan privat bersama yang sama.
 
 ## Persetujuan dan pekerjaan latar
 
-Persetujuan menyimpan snapshot sekolah, peserta, referensi foto, dan konfigurasi kegiatan serta membuat pekerjaan PDF, kartu, dan email dalam satu transaksi. Snapshot menjadi sumber semua keluaran versi tersebut.
+Persetujuan menyimpan snapshot sekolah, peserta, pembina pendamping, referensi foto, dan konfigurasi kegiatan serta membuat pekerjaan PDF, kartu, dan email dalam satu transaksi. Snapshot menjadi sumber semua keluaran versi tersebut.
 
 Worker dimulai dari `src/instrumentation.ts` pada proses Node Next.js. Ia mengambil pekerjaan dengan `FOR UPDATE SKIP LOCKED`, lease lima menit, token lease, dan maksimal tiga percobaan otomatis. Hasil baru hanya diaktifkan setelah versi/status diperiksa ulang. Pekerjaan persisten dapat dilanjutkan setelah proses aplikasi dimulai ulang. `CAMP_WORKER_DISABLED=true` tersedia untuk pemeliharaan; jika dipakai, pekerjaan menunggu sampai worker diaktifkan kembali.
 
@@ -191,6 +215,8 @@ Masa retensi peserta/foto/dokumen, jadwal penghapusan, serta kebijakan backup pe
 
 ## Hasil verifikasi
 
+- Fitur beberapa pembina: build produksi, lint, dan seluruh **44 tes Playwright** lolos. Tiga tes baru di `e2e/companions.spec.ts` memeriksa beberapa pembina, tambah/hapus baris melalui formulir asli, foto opsional beserta crop/progres, pemisahan hak akses dan kepemilikan foto, unggahan tertunda/batal/rusak, payload lama, batas 20, identitas/foto palsu, pengiriman dan snapshot, ID card dengan foto/ilustrasi, sertifikat/PDF/pratinjau, data lama tanpa persetujuan ulang, dan revisi sampai versi baru. Kartu, formulir, dan sertifikat diperiksa secara visual pada layar lebar/sempit dan PDF hasil render; nama/jabatan, font League Spartan, serta nomor tetap diverifikasi. RGBA template sertifikat yang tertanam identik dengan sumber. Aset pembina dan font tersedia pada build standalone.
+- Migrasi `0006` diuji dari skema lama dan saat dijalankan ulang; seluruh baris lama serta snapshot persetujuan tetap sama dan draf parsial ikut tersalin. Backup database/berkas privat dibuat sebelum migrasi lokal; fingerprint sembilan tabel lama tetap identik sesudah migrasi. `npm run doctor` lolos. `npm run check` lolos lint/TypeScript dan **12 dari 14 tes unit**; dua tes derivative lama tetap gagal karena Windows menolak symlink (`EPERM`). Tidak ada tes yang dilewati, fresh migration, atau reset database aplikasi.
 - Perubahan League Spartan dan format nama: lint, TypeScript/build produksi, serta empat tes sertifikat lolos. Font `LeagueSpartan-Bold` terbukti tertanam di PDF dan tersedia di hasil standalone. Nama campuran kapital, Unicode, spasi berlebih, tanda hubung, dan apostrof diperiksa; nilai nama asli registrasi/impor tetap dipertahankan. PDF nama/jabatan panjang dirender dan diperiksa kembali. Dua tes unit derivative masih dibatasi izin symlink Windows (`EPERM`); 11 tes unit lainnya lolos.
 - Fitur sertifikat: lint, TypeScript/build produksi, dan seluruh **40 tes Playwright** lolos. Tiga tes sertifikat memeriksa izin/sesi/Origin, impor XLSX dan batas ukuran/baris, validasi baris, nama sama, PDF/pratinjau, pilihan lintas halaman/filter, penolakan peserta belum terverifikasi atau persetujuan dicabut, serta registrasi dan jumlah akun yang tetap sama. PDF tiga panitia dan 30 peserta diperiksa secara visual, termasuk nama/jabatan panjang dan Unicode; gambar RGBA template yang tertanam dibandingkan dengan sumber dan identik. Dependensi Excel, template, dan font juga diperiksa pada hasil standalone. `npm run check` lolos lint/TypeScript dan 11 dari 13 tes unit; dua tes derivative tetap gagal karena izin symlink Windows (`EPERM`). Tidak ada perubahan skema atau migration baru untuk fitur ini.
 - Perubahan formulir berkepala surat Kepenuhan: build, lint, dan TypeScript lolos; empat tes `e2e/camp.spec.ts` lolos, termasuk 15 putra dan 15 putri tepat dua halaman serta unduhan format lama oleh operator/panitia tanpa persetujuan ulang. Hasil PDF dirender dan diperiksa untuk kategori tunggal, beberapa regu, dan teks panjang; identitas sekolah hanya dua kolom, tanpa baris terpotong atau halaman kosong tambahan. Dua tes unit derivative tetap gagal karena izin symlink Windows (`EPERM`).

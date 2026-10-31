@@ -15,6 +15,7 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { CompanionPhoto } from "./companion-editor";
 import { motion, useReducedMotion } from "motion/react";
 import { MotionReveal } from "@/components/motion";
 import {
@@ -24,6 +25,7 @@ import {
 import {
   formatTime,
   totals,
+  patrolCompanions,
   type Category,
   type Registration,
   type RegistrationStatus,
@@ -283,11 +285,23 @@ export function RegistrationSummary({
                       peserta
                     </span>
                   </div>
-                  {patrol.companion && (
-                    <p className="muted">
-                      Pembina: {patrol.companion}{" "}
-                      {patrol.phone && `· ${patrol.phone}`}
-                    </p>
+                  {patrolCompanions(patrol).length > 0 && (
+                    <div className="companion-review">
+                      <p className="muted">
+                        Pembina pendamping ({patrolCompanions(patrol).length})
+                      </p>
+                      {patrolCompanions(patrol).map((c) => (
+                        <div className="review-participant" key={c.id}>
+                          {showPhotos && <CompanionPhoto companion={c} />}
+                          <div>
+                            <strong>
+                              {c.name || "Nama pembina belum diisi"}
+                            </strong>
+                            <p>{c.phone || "WhatsApp tidak diisi"}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   )}
                   <div className="review-participants">
                     {patrol.participants.map((participant, i) => (

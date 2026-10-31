@@ -24,7 +24,7 @@ import {
 } from "@/lib/camp/certificates";
 import { EmptyState, Notice, PageHeading } from "./common";
 
-type Kind = "participants" | "committee";
+type Kind = "participants" | "companions" | "committee";
 
 async function certificatePdf(kind: Kind, people: CertificateRecipient[]) {
   const response = await fetch("/api/admin/certificates/generate", {
@@ -32,7 +32,7 @@ async function certificatePdf(kind: Kind, people: CertificateRecipient[]) {
     cache: "no-store",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(
-      kind === "participants"
+      kind !== "committee"
         ? { kind, ids: people.map((person) => person.key) }
         : {
             kind,
@@ -59,6 +59,10 @@ export function Certificates() {
   const previewRef = useRef<HTMLElement>(null);
   const [kind, setKind] = useState<Kind>("participants");
   const [participants, setParticipants] = useState<CertificateRecipient[]>([]);
+  const [companions, setCompanions] = useState<CertificateRecipient[]>([]);
+  const [companionSelection, setCompanionSelection] = useState<Set<string>>(
+    new Set(),
+  );
   const [committee, setCommittee] = useState<CertificateImport>({
     recipients: [],
     issues: [],
@@ -88,15 +92,31 @@ export function Certificates() {
 
   useEffect(() => {
     const controller = new AbortController();
-    void campRequest<{ data: CertificateRecipient[] }>(
-      "/api/admin/certificates/participants",
-      { signal: controller.signal },
-    )
-      .then(({ data }) => {
-        setParticipants(data);
+    void Promise.all([
+      campRequest<{ data: CertificateRecipient[] }>(
+        "/api/admin/certificates/participants",
+        { signal: controller.signal },
+      ),
+      campRequest<{ data: CertificateRecipient[] }>(
+        "/api/admin/certificates/companions",
+        { signal: controller.signal },
+      ),
+    ])
+      .then(([members, leaders]) => {
+        if (controller.signal.aborted) return;
+        setParticipants(members.data);
+        setCompanions(leaders.data);
         setParticipantSelection(
           (previous) =>
-            new Set(data.filter((p) => previous.has(p.key)).map((p) => p.key)),
+            new Set(
+              members.data.filter((p) => previous.has(p.key)).map((p) => p.key),
+            ),
+        );
+        setCompanionSelection(
+          (previous) =>
+            new Set(
+              leaders.data.filter((p) => previous.has(p.key)).map((p) => p.key),
+            ),
         );
         setLoadError("");
       })
@@ -105,7 +125,7 @@ export function Certificates() {
           setLoadError(
             cause instanceof Error
               ? cause.message
-              : "Daftar peserta belum dapat dimuat.",
+              : "Daftar penerima belum dapat dimuat.",
           );
       })
       .finally(() => {
@@ -121,24 +141,39 @@ export function Certificates() {
     };
   }, [preview]);
 
-  const people = kind === "participants" ? participants : committee.recipients;
+  const people =
+    kind === "participants"
+      ? participants
+      : kind === "companions"
+        ? companions
+        : committee.recipients;
   const selection =
-    kind === "participants" ? participantSelection : committeeSelection;
+    kind === "participants"
+      ? participantSelection
+      : kind === "companions"
+        ? companionSelection
+        : committeeSelection;
   const setSelection =
-    kind === "participants" ? setParticipantSelection : setCommitteeSelection;
+    kind === "participants"
+      ? setParticipantSelection
+      : kind === "companions"
+        ? setCompanionSelection
+        : setCommitteeSelection;
   const schools = useMemo(
     () =>
       [
         ...new Map(
-          participants.map((p) => [p.registrationId!, p.school!]),
+          people
+            .filter((p) => p.registrationId && p.school)
+            .map((p) => [p.registrationId!, p.school!]),
         ).entries(),
       ].sort((a, b) => a[1].localeCompare(b[1], "id")),
-    [participants],
+    [people],
   );
   const patrols = useMemo(
     () => [
       ...new Map(
-        participants
+        people
           .filter((p) => !school || p.registrationId === school)
           .map((p) => [
             p.patrolId!,
@@ -146,11 +181,11 @@ export function Certificates() {
           ]),
       ).entries(),
     ],
-    [participants, school],
+    [people, school],
   );
   const filtered = people.filter(
     (p) =>
-      (kind !== "participants" ||
+      (kind === "committee" ||
         ((!school || p.registrationId === school) &&
           (!patrol || p.patrolId === patrol))) &&
       `${p.name} ${p.position} ${p.school || ""} ${p.patrol || ""}`
@@ -163,7 +198,7 @@ export function Certificates() {
   const visible = filtered.slice((currentPage - 1) * 20, currentPage * 20);
   const invalidImport = kind === "committee" && committee.issues.length > 0;
   const unavailable =
-    busy !== null || (kind === "participants" && (loading || !!loadError));
+    busy !== null || (kind !== "committee" && (loading || !!loadError));
   const duplicateCount =
     people.length -
     new Set(people.map((p) => p.name.toLocaleLowerCase("id"))).size;
@@ -171,6 +206,8 @@ export function Certificates() {
   function changeKind(next: Kind) {
     setKind(next);
     setQ("");
+    setSchool("");
+    setPatrol("");
     setPage(1);
     setError("");
     setPreview(null);
@@ -245,7 +282,7 @@ export function Certificates() {
       } else {
         const anchor = document.createElement("a");
         anchor.href = url;
-        anchor.download = `sertifikat-${kind === "participants" ? "peserta" : "panitia"}-${selected.length}.pdf`;
+        anchor.download = `sertifikat-${kind === "participants" ? "peserta" : kind === "companions" ? "pembina" : "panitia"}-${selected.length}.pdf`;
         document.body.appendChild(anchor);
         anchor.click();
         anchor.remove();
@@ -273,7 +310,7 @@ export function Certificates() {
       <PageHeading
         eyebrow="PIAGAM PENGHARGAAN"
         title="Sertifikat"
-        description="Siapkan penghargaan untuk peserta dan panitia dalam satu tempat."
+        description="Siapkan penghargaan untuk peserta, pembina, dan panitia dalam satu tempat."
       >
         <span className="certificate-number">
           <Award size={16} /> {CERTIFICATE_NUMBER}
@@ -293,6 +330,14 @@ export function Certificates() {
           Sertifikat peserta
         </button>
         <button
+          className={kind === "companions" ? "active" : ""}
+          aria-pressed={kind === "companions"}
+          disabled={!!busy}
+          onClick={() => changeKind("companions")}
+        >
+          Sertifikat pembina
+        </button>
+        <button
           className={kind === "committee" ? "active" : ""}
           aria-pressed={kind === "committee"}
           disabled={!!busy}
@@ -302,14 +347,15 @@ export function Certificates() {
         </button>
       </div>
       <div className="certificate-source panel">
-        {kind === "participants" ? (
+        {kind !== "committee" ? (
           <>
             <div className="certificate-source-heading">
               <div>
                 <h2>Dari registrasi terverifikasi</h2>
                 <p>
                   Nama diambil dari data yang telah disetujui. Jabatan pada
-                  sertifikat: Peserta.
+                  sertifikat:{" "}
+                  {kind === "companions" ? "Pembina Pendamping" : "Peserta"}.
                 </p>
               </div>
               <Button
@@ -328,6 +374,7 @@ export function Certificates() {
               <label>
                 Sekolah
                 <select
+                  aria-label="Sekolah"
                   className="filter-select"
                   value={school}
                   onChange={(e) => {
@@ -347,6 +394,7 @@ export function Certificates() {
               <label>
                 Regu
                 <select
+                  aria-label="Regu"
                   className="filter-select"
                   value={patrol}
                   onChange={(e) => {
@@ -404,7 +452,7 @@ export function Certificates() {
           </>
         )}
       </div>
-      {(error || (kind === "participants" && loadError)) && (
+      {(error || (kind !== "committee" && loadError)) && (
         <div role="alert">
           <Notice tone="error">{error || loadError}</Notice>
         </div>
@@ -482,9 +530,9 @@ export function Certificates() {
               </button>
             </div>
           </div>
-          {loading && kind === "participants" ? (
+          {loading && kind !== "committee" ? (
             <p className="panel-body muted" role="status">
-              Memuat peserta terverifikasi…
+              Memuat penerima terverifikasi…
             </p>
           ) : visible.length ? (
             <div className="certificate-table-wrap">
@@ -493,7 +541,7 @@ export function Certificates() {
                   <tr>
                     <th scope="col">Pilih</th>
                     <th scope="col">
-                      Nama & {kind === "participants" ? "sekolah" : "jabatan"}
+                      Nama & {kind !== "committee" ? "sekolah" : "jabatan"}
                     </th>
                     <th scope="col">
                       <span className="sr-only">Pratinjau</span>
@@ -524,7 +572,7 @@ export function Certificates() {
                       <td>
                         <strong>{formatCertificateName(person.name)}</strong>
                         <small>
-                          {kind === "participants"
+                          {kind !== "committee"
                             ? `${person.school} · ${person.patrol} (${person.category})`
                             : person.position}
                         </small>
@@ -549,13 +597,13 @@ export function Certificates() {
           ) : (
             <EmptyState
               title={
-                kind === "participants"
-                  ? "Belum ada peserta yang sesuai"
+                kind !== "committee"
+                  ? "Belum ada penerima yang sesuai"
                   : "Belum ada data panitia"
               }
             >
-              {kind === "participants"
-                ? "Peserta tampil setelah pendaftaran sekolah terverifikasi. Coba sesuaikan filter pencarian."
+              {kind !== "committee"
+                ? "Penerima tampil setelah pendaftaran sekolah terverifikasi. Coba sesuaikan filter pencarian."
                 : "Unggah Excel berisi Nama dan Jabatan untuk menyiapkan sertifikat."}
             </EmptyState>
           )}
