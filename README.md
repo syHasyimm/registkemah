@@ -8,6 +8,8 @@ Untuk membuat akun panitia, isi `PANITIA_EMAIL`, `PANITIA_NAME`, dan `PANITIA_PA
 
 Setiap akun memiliki satu role: operator hanya memakai `/app`, sedangkan admin/panitia hanya memakai `/admin`. Pendaftaran publik selalu membuat operator. Login memilih dashboard secara otomatis; penetapan role mengganti role lama.
 
+Admin/panitia dapat membuka `/admin/sertifikat` untuk membuat PDF sertifikat dari peserta terverifikasi atau unggahan Excel panitia berkolom Nama dan Jabatan. Nomor sertifikat tetap sesuai template. Fitur ini tidak memerlukan migration baru dan tidak mengubah data registrasi; lihat [panduan sertifikat](docs/camp-backend.md#sertifikat-peserta-dan-panitia).
+
 ## Fondasi starter
 
 The PostgreSQL edition of the base starter: **Next.js, Drizzle ORM, PostgreSQL, Better Auth, Tailwind CSS, shadcn/ui, and Motion**. It includes working accounts, a blank protected app, an authenticated Notes API demonstrating the backend standard, project skills, and Context7 configuration.

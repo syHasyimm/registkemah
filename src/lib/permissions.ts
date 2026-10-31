@@ -11,6 +11,7 @@ export const statement = {
   notes: ["read-any", "delete-any"],
   registrations: ["read-any", "review-any"],
   event: ["manage"],
+  certificates: ["generate"],
 } as const;
 
 export const ac = createAccessControl(statement);
@@ -18,12 +19,19 @@ export const ac = createAccessControl(statement);
 // A role is a subset of the statement. Keep `user` deliberately empty: the
 // signed-in default should be able to do nothing beyond its own records.
 export const roles = {
-  user: ac.newRole({ notes: [], registrations: [], event: [] }),
+  user: ac.newRole({
+    notes: [],
+    registrations: [],
+    event: [],
+    certificates: [],
+  }),
   panitia: ac.newRole({
+    certificates: ["generate"],
     registrations: ["read-any", "review-any"],
     event: ["manage"],
   }),
   admin: ac.newRole({
+    certificates: ["generate"],
     ...adminAc.statements,
     notes: ["read-any", "delete-any"],
     registrations: ["read-any", "review-any"],

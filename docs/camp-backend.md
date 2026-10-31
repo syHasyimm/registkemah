@@ -83,6 +83,28 @@ Migrasi `0005` menormalkan role lama menjadi satu nilai: `admin` mengambil prior
 - Nama peserta sama menjadi peringatan. Nama regu sama dalam kategori yang sama ditolak saat pengiriman; nama regu sama lintas kategori diizinkan.
 - API membatasi request JSON sampai 2 MB dan maksimal 100 regu per pendaftaran sebagai batas sumber daya. Semua regu yang disimpan diproses; ekspor tidak dibatasi oleh satu halaman daftar.
 
+## Sertifikat peserta dan panitia
+
+Buka **Sertifikat** di dashboard admin/panitia (`/admin/sertifikat`). Nomor tetap **001/0803/KBP/2026**, termasuk pada PDF gabungan. Nomor, isi kegiatan, tanggal, tanda tangan, dan stempel mengikuti gambar `public/images/Template Sertifikat.png`. Hanya nama dan jabatan pada pita merah yang diganti. PDF memakai A4 landscape, satu penerima per halaman.
+
+- **Peserta:** daftar berasal dari snapshot persetujuan aktif untuk pendaftaran `Terverifikasi`. Filter sekolah/regu atau cari nama, pilih penerima, lalu unduh PDF. Pilihan dipertahankan lintas halaman dan filter; jumlah yang dipilih selalu ditampilkan. Jabatan otomatis `Peserta`. Nama sama tidak digabung. Saat generate, server memeriksa kembali status dan mengambil nama dari database, sehingga browser tidak dapat mengganti nama peserta atau memakai persetujuan yang telah dicabut.
+- **Panitia:** unduh template Excel kosong, isi kolom `Nama` dan `Jabatan` di baris pertama lembar pertama, lalu unggah `.xlsx`. Urutan kedua kolom boleh ditukar dan kapitalisasi judul diabaikan. Baris kosong diabaikan; baris yang tidak lengkap atau bukan teks ditunjukkan dengan nomor baris dan harus diperbaiki di Excel sebelum unduhan. Nama maksimal 150 karakter dan jabatan 120 karakter. File maksimal 2 MB dan 1.000 baris; ukuran ZIP setelah dibuka juga dibatasi. Nama yang sama tetap menjadi penerima terpisah.
+- Ikon mata menghasilkan pratinjau PDF asli untuk satu penerima. Tautan membuka PDF di tab baru tersedia jika penampil PDF pada perangkat tidak mendukung iframe.
+- Maksimal **200 sertifikat per PDF**. Gunakan filter atau pilihan bertahap untuk jumlah lebih besar; aplikasi menolak pilihan berlebihan dan tidak memotong hasil secara diam-diam.
+
+Fitur ini **tidak menambah tabel atau migration**, tidak mengubah registrasi, dan tidak menyimpan Excel, daftar panitia, atau riwayat penerbitan. Unduh hasil sebelum meninggalkan halaman; unggah kembali Excel untuk sesi berikutnya. Unggahan panitia tidak membuat akun login. Tidak ada email sertifikat yang dikirim otomatis.
+
+Halaman dan seluruh API sertifikat memerlukan izin `certificates.generate`, yang diberikan kepada role `admin` dan `panitia`. Operator dan pengunjung anonim tidak dapat mengaksesnya. API POST memeriksa Origin dan memvalidasi input; unduhan/pratinjau memakai respons privat `no-store`.
+
+| Endpoint                                   | Perilaku                                                                                                 |
+| ------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
+| `GET /api/admin/certificates/participants` | Seluruh peserta dari persetujuan aktif, tanpa batas satu halaman daftar                                  |
+| `GET /api/admin/certificates/template`     | Unduh template Excel berkolom Nama dan Jabatan                                                           |
+| `POST /api/admin/certificates/import`      | Baca body biner XLSX; kembalikan penerima valid dan masalah per baris                                    |
+| `POST /api/admin/certificates/generate`    | PDF dari `{kind: "participants", ids: [...]}` atau `{kind: "committee", recipients: [{name, position}]}` |
+
+Template sertifikat dan font disertakan dalam pelacakan build standalone agar tersedia pada deployment Docker. Pengujian fitur ada di `e2e/certificates.spec.ts` dan berjalan melalui `npm run test:e2e -- e2e/certificates.spec.ts` pada PostgreSQL pengujian yang terpisah.
+
 ## Kontrak API
 
 Semua endpoint di bawah kecuali informasi kegiatan memerlukan sesi. API panitia memerlukan izin tambahan; kegagalan akses menghasilkan JSON 401/403. Rekaman yang tidak ada dan yang bukan milik operator sama-sama menghasilkan 404. Respons privat memakai `Cache-Control: private, no-store`.
@@ -167,6 +189,7 @@ Masa retensi peserta/foto/dokumen, jadwal penghapusan, serta kebijakan backup pe
 
 ## Hasil verifikasi
 
+- Fitur sertifikat: lint, TypeScript/build produksi, dan seluruh **40 tes Playwright** lolos. Tiga tes sertifikat memeriksa izin/sesi/Origin, impor XLSX dan batas ukuran/baris, validasi baris, nama sama, PDF/pratinjau, pilihan lintas halaman/filter, penolakan peserta belum terverifikasi atau persetujuan dicabut, serta registrasi dan jumlah akun yang tetap sama. PDF tiga panitia dan 30 peserta diperiksa secara visual, termasuk nama/jabatan panjang dan Unicode; gambar RGBA template yang tertanam dibandingkan dengan sumber dan identik. Dependensi Excel, template, dan font juga diperiksa pada hasil standalone. `npm run check` lolos lint/TypeScript dan 11 dari 13 tes unit; dua tes derivative tetap gagal karena izin symlink Windows (`EPERM`). Tidak ada perubahan skema atau migration baru untuk fitur ini.
 - Perubahan formulir berkepala surat Kepenuhan: build, lint, dan TypeScript lolos; empat tes `e2e/camp.spec.ts` lolos, termasuk 15 putra dan 15 putri tepat dua halaman serta unduhan format lama oleh operator/panitia tanpa persetujuan ulang. Hasil PDF dirender dan diperiksa untuk kategori tunggal, beberapa regu, dan teks panjang; identitas sekolah hanya dua kolom, tanpa baris terpotong atau halaman kosong tambahan. Dua tes unit derivative tetap gagal karena izin symlink Windows (`EPERM`).
 - Build produksi, lint, TypeScript, dan seluruh 30 tes Playwright lolos. Tes memakai PostgreSQL dan SMTP Mailpit terpisah dari data aplikasi.
 - Pengujian akses memastikan login/admin/verifikasi diarahkan sesuai role; admin/panitia tidak dapat memakai halaman atau API operator dan tidak otomatis dibuatkan sekolah/draf; operator tidak bisa masuk area staf; signup tidak bisa menyisipkan role staf; API administratif juga menolak role gabungan. Perubahan role pada sesi aktif langsung menolak area lama dan mempertahankan draf ketika akun dikembalikan menjadi operator.

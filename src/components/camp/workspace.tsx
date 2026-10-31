@@ -14,6 +14,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   ArrowUpRight,
+  Award,
   BookOpen,
   Check,
   ChevronDown,
@@ -529,6 +530,16 @@ function WorkspaceShell({
           mobileLabel: "Pendaftaran",
           icon: ClipboardList,
         },
+        ...(preview
+          ? []
+          : [
+              {
+                path: "/admin/sertifikat",
+                label: "Sertifikat",
+                mobileLabel: "Sertifikat",
+                icon: Award,
+              },
+            ]),
         {
           path: "/admin/kegiatan",
           label: "Pengaturan kegiatan",
@@ -692,6 +703,9 @@ function WorkspaceShell({
       </div>
       <nav
         className="mobile-bottom-nav no-print"
+        style={{
+          gridTemplateColumns: `repeat(${links.length}, minmax(0, 1fr))`,
+        }}
         aria-label={
           admin ? "Navigasi utama panitia" : "Navigasi utama operator"
         }
