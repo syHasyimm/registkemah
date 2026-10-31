@@ -17,6 +17,7 @@ import type {
   CertificateImport,
   CertificateRecipient,
 } from "@/lib/camp/certificates";
+import { formatCertificateName } from "@/lib/camp/certificates";
 
 const origin = "http://localhost:3101";
 const headers = { Origin: origin };
@@ -79,7 +80,18 @@ function checkPdf(bytes: Buffer, pages: number) {
     pages,
   );
   expect(bytes.toString("latin1")).toContain("001/0803/KBP/2026");
+  expect(bytes.toString("latin1")).toContain("LeagueSpartan-Bold");
 }
+
+test("certificate names capitalize each word while keeping spaces and Unicode", () => {
+  for (const [input, expected] of [
+    ["sATYA SATRIA shiddiqi", "Satya Satria Shiddiqi"],
+    ["  siti   aMINAH  ", "Siti Aminah"],
+    ["ÉLÉONORE pUtRi", "Éléonore Putri"],
+    ["ahmad al-faruq o'NEILL", "Ahmad Al-Faruq O'Neill"],
+  ])
+    expect(formatCertificateName(input)).toBe(expected);
+});
 
 test("certificate APIs require staff permissions, origin, and an active session", async ({
   request,
@@ -143,8 +155,8 @@ test("committee Excel validates rows, previews and downloads PDFs without saving
     "Koordinator Seksi Perlengkapan, Sarana Prasarana dan Dokumentasi Kegiatan Perkemahan";
   const bytes = await workbook([
     [" Jabatan ", "NAMA"],
-    ["Ketua Panitia", "Éléonore Putri"],
-    ["Sekretaris", "Éléonore Putri"],
+    ["Ketua Panitia", "ÉLÉONORE pUtRi"],
+    ["Sekretaris", "élÉONORE PUTRI"],
     [longPosition, longName],
   ]);
   const imported = await staff.client.post(`${base}/import`, {
@@ -157,7 +169,7 @@ test("committee Excel validates rows, previews and downloads PDFs without saving
   expect(data.recipients).toHaveLength(3);
   expect(new Set(data.recipients.map((p) => p.key)).size).toBe(3);
   expect(data.recipients[0]).toMatchObject({
-    name: "Éléonore Putri",
+    name: "ÉLÉONORE pUtRi",
     position: "Ketua Panitia",
     row: 2,
   });
@@ -379,7 +391,7 @@ async function completeRegistration(client: APIRequestContext) {
   reg.patrols = (["Putri", "Putra"] as const).map((category) => {
     const members = Array.from({ length: 15 }, (_, i) => ({
       id: randomUUID(),
-      name: i < 2 ? "Nama Kembar" : `Peserta ${category} ${i + 1}`,
+      name: i < 2 ? "NAMA keMbAr" : `Peserta ${category} ${i + 1}`,
       base: reg.school.name,
       className: "7A",
       photo: "",
@@ -461,7 +473,7 @@ test("participant certificates use verified snapshots, include all pages, and pr
     (p) => p.registrationId === reg.id,
   );
   expect(people).toHaveLength(30);
-  expect(people.filter((p) => p.name === "Nama Kembar")).toHaveLength(4);
+  expect(people.filter((p) => p.name === "NAMA keMbAr")).toHaveLength(4);
   expect(new Set(people.map((p) => p.key)).size).toBe(30);
   expect(people.every((p) => p.position === "Peserta")).toBe(true);
   const pdf = await staff.client.post(`${base}/generate`, {
@@ -537,6 +549,7 @@ test("participant certificates use verified snapshots, include all pages, and pr
   await expect(
     page.getByText("15 penerima sesuai filter · 30 dipilih"),
   ).toBeVisible();
+  await expect(page.getByText("Nama Kembar", { exact: true })).toHaveCount(2);
   await page.screenshot({
     path: testInfo.outputPath("sertifikat-peserta-desktop.png"),
     fullPage: true,

@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { CampApiError, campRequest } from "@/lib/camp/http-client";
 import {
   CERTIFICATE_NUMBER,
+  formatCertificateName,
   MAX_CERTIFICATE_EXCEL_BYTES,
   MAX_CERTIFICATES_PER_PDF,
   type CertificateImport,
@@ -236,7 +237,7 @@ export function Certificates() {
       const blob = await certificatePdf(kind, person ? [person] : selected);
       const url = URL.createObjectURL(blob);
       if (person) {
-        setPreview({ url, name: person.name });
+        setPreview({ url, name: formatCertificateName(person.name) });
         if (window.matchMedia("(max-width: 1200px)").matches)
           requestAnimationFrame(() =>
             previewRef.current?.scrollIntoView({ block: "start" }),
@@ -505,7 +506,7 @@ export function Certificates() {
                       <td>
                         <input
                           type="checkbox"
-                          aria-label={`Pilih ${person.name}${person.row ? ` baris ${person.row}` : ` ${person.school} ${person.patrol}`}`}
+                          aria-label={`Pilih ${formatCertificateName(person.name)}${person.row ? ` baris ${person.row}` : ` ${person.school} ${person.patrol}`}`}
                           checked={selection.has(person.key)}
                           disabled={
                             unavailable ||
@@ -521,7 +522,7 @@ export function Certificates() {
                         />
                       </td>
                       <td>
-                        <strong>{person.name}</strong>
+                        <strong>{formatCertificateName(person.name)}</strong>
                         <small>
                           {kind === "participants"
                             ? `${person.school} · ${person.patrol} (${person.category})`
@@ -533,7 +534,7 @@ export function Certificates() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          aria-label={`Pratinjau ${person.name}${person.row ? ` baris ${person.row}` : ""}`}
+                          aria-label={`Pratinjau ${formatCertificateName(person.name)}${person.row ? ` baris ${person.row}` : ""}`}
                           disabled={unavailable}
                           onClick={() => void generate(person)}
                         >

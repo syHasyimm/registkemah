@@ -3,6 +3,7 @@ import path from "node:path";
 import PDFDocument from "pdfkit";
 import {
   CERTIFICATE_NUMBER,
+  formatCertificateName,
   type CertificateRecipient,
 } from "@/lib/camp/certificates";
 
@@ -55,7 +56,7 @@ export function renderCertificatesPdf(
     try {
       doc.registerFont(
         "CertificateBold",
-        path.join(process.cwd(), "assets", "fonts", "NotoSans-Bold.ttf"),
+        path.join(process.cwd(), "assets", "fonts", "LeagueSpartan-Bold.ttf"),
       );
       const template = path.join(
         process.cwd(),
@@ -70,7 +71,7 @@ export function renderCertificatesPdf(
           height: doc.page.height,
         });
         doc.save().scale(doc.page.width / 2000, doc.page.height / 1414);
-        ribbonText(doc, person.name, nameBox);
+        ribbonText(doc, formatCertificateName(person.name), nameBox);
         ribbonText(doc, person.position, positionBox);
         doc.restore();
       }
