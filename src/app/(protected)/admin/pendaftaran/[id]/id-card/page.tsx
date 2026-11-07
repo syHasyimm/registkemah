@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { requirePermission } from "@/lib/session";
 import { IdCards } from "@/components/camp/id-cards";
-export const metadata: Metadata = { title: "ID card panitia" };
+export const metadata: Metadata = { title: "ID card peserta & pembina" };
 export default async function Page({
   params,
 }: {

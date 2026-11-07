@@ -578,12 +578,14 @@ test("form supports multiple companions and verified snapshots generate cards an
   const adminPage = await staff.context.newPage();
   await adminPage.setViewportSize({ width: 1440, height: 1000 });
   await adminPage.goto(`/admin/pendaftaran/${reg.id}/id-card`);
-  await adminPage.getByRole("button", { name: "Pembina", exact: true }).click();
   await expect(
-    adminPage.getByRole("img", { name: /ID card Satya Satria Shiddiqi/ }),
+    adminPage.getByRole("img", { name: /ID card peserta PESERTA 1/i }),
   ).toBeVisible();
   await expect(
-    adminPage.getByRole("button", { name: "Cetak kartu pembina" }),
+    adminPage.getByRole("img", { name: /ID card pembina Satya Satria Shiddiqi/ }),
+  ).toBeVisible();
+  await expect(
+    adminPage.getByRole("button", { name: "Cetak semua kartu" }),
   ).toBeEnabled();
   await adminPage.screenshot({
     path: testInfo.outputPath("id-card-pembina-desktop.png"),

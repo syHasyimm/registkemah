@@ -8,45 +8,56 @@ import { MotionReveal } from "@/components/motion";
 import { campRequest } from "@/lib/camp/http-client";
 import { useCamp, useRegistration } from "./workspace";
 import { EmptyState, Notice, PageHeading } from "./common";
+type Card = {
+  id: string;
+  patrolId: string;
+  patrolName: string;
+  category: string;
+  name: string;
+  base: string;
+  imageUrl: string;
+};
 type Cards = {
   version: number;
   status: string;
-  data: {
-    id: string;
-    patrolId: string;
-    patrolName: string;
-    category: string;
-    name: string;
-    base: string;
-    imageUrl: string;
-  }[];
+  data: Card[];
 };
+type CardKind = "participants" | "companions";
+type CardRow = Card & { key: string; kind: CardKind };
 export function LiveIdCards({ id }: { id: string }) {
   const { href } = useCamp();
   const { registration: reg, error: registrationError } = useRegistration(id);
-  const [cards, setCards] = useState<Cards | null>(null);
+  const [participants, setParticipants] = useState<Cards | null>(null);
+  const [companions, setCompanions] = useState<Cards | null>(null);
   const [patrolId, setPatrolId] = useState("");
-  const [kind, setKind] = useState<"participants" | "companions">(
-    "participants",
-  );
   const [error, setError] = useState("");
   const [loaded, setLoaded] = useState<string[]>([]);
   useEffect(() => {
     const controller = new AbortController();
     const load = () => {
-      void campRequest<Cards>(
-        `/api/admin/registrations/${id}/cards?kind=${kind}`,
-        {
-          signal: controller.signal,
-        },
-      )
-        .then((data) => {
+      void Promise.all([
+        campRequest<Cards>(
+          `/api/admin/registrations/${id}/cards?kind=participants`,
+          { signal: controller.signal },
+        ),
+        campRequest<Cards>(
+          `/api/admin/registrations/${id}/cards?kind=companions`,
+          { signal: controller.signal },
+        ),
+      ])
+        .then(([members, leaders]) => {
           if (controller.signal.aborted) return;
-          setCards(data);
+          setParticipants(members);
+          setCompanions(leaders);
           setError("");
         })
-        .catch((error) => {
-          if (!controller.signal.aborted) setError(error.message);
+        .catch((cause) => {
+          if (!controller.signal.aborted)
+            setError(
+              cause instanceof Error
+                ? cause.message
+                : "Kartu belum dapat dimuat.",
+            );
         });
     };
     load();
@@ -55,14 +66,34 @@ export function LiveIdCards({ id }: { id: string }) {
       controller.abort();
       clearInterval(timer);
     };
-  }, [id, kind]);
+  }, [id]);
   const active =
     reg?.status === "Terverifikasi" &&
-    cards?.status === "Siap" &&
-    cards.version === reg.version;
+    participants?.status === "Siap" &&
+    companions?.status === "Siap" &&
+    participants.version === reg.version &&
+    companions.version === reg.version;
+  const allRows: CardRow[] = [
+    ...(participants?.data || []).map((card) => ({
+      ...card,
+      key: `participants:${card.id}`,
+      kind: "participants" as const,
+    })),
+    ...(companions?.data || []).map((card) => ({
+      ...card,
+      key: `companions:${card.id}`,
+      kind: "companions" as const,
+    })),
+  ];
   const rows = active
-    ? cards.data.filter((c) => !patrolId || c.patrolId === patrolId)
+    ? allRows.filter((c) => !patrolId || c.patrolId === patrolId)
     : [];
+  const participantCount = rows.filter(
+    (c) => c.kind === "participants",
+  ).length;
+  const companionCount = rows.filter((c) => c.kind === "companions").length;
+  const readyToPrint =
+    active && rows.length > 0 && rows.every((c) => loaded.includes(c.key));
   return (
     <>
       <Link className="back-link" href={href(`/admin/pendaftaran/${id}`)}>
@@ -70,7 +101,7 @@ export function LiveIdCards({ id }: { id: string }) {
         Kembali ke pemeriksaan
       </Link>
       <PageHeading
-        title={kind === "companions" ? "ID card pembina" : "ID card peserta"}
+        title="ID card peserta & pembina"
         description={
           reg
             ? `${reg.school.name} · ${reg.number} · Versi ${reg.version}`
@@ -79,42 +110,17 @@ export function LiveIdCards({ id }: { id: string }) {
       >
         <Button
           onClick={() => window.print()}
-          disabled={
-            !active || !rows.length || rows.some((c) => !loaded.includes(c.id))
-          }
+          disabled={!readyToPrint}
         >
           <Printer />
-          Cetak kartu {kind === "companions" ? "pembina" : "peserta"}
+          Cetak semua kartu
         </Button>
       </PageHeading>
       <div className="no-print">
-        <div className="status-tabs" role="group" aria-label="Jenis ID card">
-          <button
-            className={kind === "participants" ? "active" : ""}
-            aria-pressed={kind === "participants"}
-            onClick={() => {
-              setKind("participants");
-              setCards(null);
-              setLoaded([]);
-            }}
-          >
-            Peserta
-          </button>
-          <button
-            className={kind === "companions" ? "active" : ""}
-            aria-pressed={kind === "companions"}
-            onClick={() => {
-              setKind("companions");
-              setCards(null);
-              setLoaded([]);
-            }}
-          >
-            Pembina
-          </button>
-        </div>
         <Notice title="Khusus panitia · ukuran cetak 55 × 85 mm">
-          Gunakan kertas A4, skala 100%, dan aktifkan grafik latar. Berikan
-          kartu fisik kepada operator setelah formulir pendaftaran diterima.
+          Gunakan kertas A4, skala 100%, dan aktifkan grafik latar. Kartu peserta
+          dan pembina tercetak bersamaan. Berikan kartu fisik kepada operator
+          setelah formulir pendaftaran diterima.
         </Notice>
         {(error || registrationError) && (
           <div className="mt-4" role="alert">
@@ -152,21 +158,21 @@ export function LiveIdCards({ id }: { id: string }) {
               ))}
             </select>
             <p>
-              {rows.length} kartu · versi {cards.version} · tiga kolom A4
+              {participantCount} kartu peserta · {companionCount} kartu pembina ·
+              versi {participants.version} · tiga kolom A4
             </p>
           </div>
           {!rows.length && (
             <EmptyState title="Belum ada kartu sesuai filter">
-              {kind === "companions"
-                ? "Pembina tampil dari data pendaftaran yang sudah disetujui."
-                : "Coba pilih regu lain atau semua regu."}
+              Kartu peserta tampil setelah data disetujui. Kartu pembina tampil
+              bila nama pembina sudah diisi.
             </EmptyState>
           )}
           <div className="idcard-grid">
             {rows.map((c, index) => (
               <MotionReveal
                 className="idcard-wrap"
-                key={c.id}
+                key={c.key}
                 delay={(index % 3) * 0.05}
               >
                 <div className="participant-idcard">
@@ -174,13 +180,13 @@ export function LiveIdCards({ id }: { id: string }) {
                     unoptimized
                     loading="eager"
                     src={c.imageUrl}
-                    alt={`ID card ${c.name}, ${c.base}`}
+                    alt={`ID card ${c.kind === "companions" ? "pembina" : "peserta"} ${c.name}, ${c.base}`}
                     width={650}
                     height={1005}
                     style={{ width: "100%", height: "100%", objectFit: "fill" }}
                     onLoad={() =>
                       setLoaded((ids) =>
-                        ids.includes(c.id) ? ids : [...ids, c.id],
+                        ids.includes(c.key) ? ids : [...ids, c.key],
                       )
                     }
                     onError={() =>
@@ -191,6 +197,7 @@ export function LiveIdCards({ id }: { id: string }) {
                   />
                 </div>
                 <p>
+                  {c.kind === "companions" ? "Pembina" : "Peserta"} ·{" "}
                   {c.patrolName} · {c.category}
                 </p>
               </MotionReveal>

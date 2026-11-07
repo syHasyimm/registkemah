@@ -7,6 +7,8 @@ import { MotionReveal } from "@/components/motion";
 import template from "@/components/image/Olivia Wilson.png";
 import { useCamp } from "./workspace";
 import { EmptyState, Notice, PageHeading, ParticipantPhoto } from "./common";
+import { CompanionPhoto } from "./companion-editor";
+import { patrolCompanions } from "@/lib/camp/types";
 import { LiveIdCards } from "./live-id-cards";
 export function IdCards({ id }: { id: string }) {
   const { preview } = useCamp();
@@ -30,7 +32,7 @@ function PreviewIdCards({ id }: { id: string }) {
           Kembali ke pemeriksaan
         </Link>
         <PageHeading
-          title="ID card peserta"
+          title="ID card peserta & pembina"
           description="Kartu hanya tersedia untuk versi persetujuan yang masih aktif."
         />
         <MotionReveal as="section" delay={0.0} className="panel">
@@ -66,6 +68,17 @@ function PreviewIdCards({ id }: { id: string }) {
         category: p.category,
       })),
     );
+  const companions = reg.patrols
+    .filter((p) => !patrolId || p.id === patrolId)
+    .flatMap((p) =>
+      patrolCompanions(p)
+        .filter((c) => c.name.trim())
+        .map((c) => ({
+          ...c,
+          patrolName: p.name,
+          category: p.category,
+        })),
+    );
   return (
     <>
       <Link
@@ -76,7 +89,7 @@ function PreviewIdCards({ id }: { id: string }) {
         Kembali ke pemeriksaan
       </Link>
       <PageHeading
-        title="ID card peserta"
+        title="ID card peserta & pembina"
         description={`${reg.school.name} · ${reg.number} · Versi ${reg.version}`}
       >
         <Button onClick={() => window.print()}>
@@ -87,8 +100,9 @@ function PreviewIdCards({ id }: { id: string }) {
       <div className="no-print">
         <Notice title="Khusus panitia · ukuran cetak 55 × 85 mm">
           Gunakan kertas A4, skala 100%, dan aktifkan grafik latar pada dialog
-          cetak. Kartu ini menggunakan data contoh frontend. Pastikan semua nama
-          dan pangkalan terbaca sebelum dicetak.
+          cetak. Kartu peserta dan pembina tampil bersamaan. Kartu ini
+          menggunakan data contoh frontend. Pastikan semua nama dan pangkalan
+          terbaca sebelum dicetak.
         </Notice>
         <div className="idcard-toolbar">
           <select
@@ -105,7 +119,8 @@ function PreviewIdCards({ id }: { id: string }) {
             ))}
           </select>
           <p>
-            {participants.length} kartu · 3 kolom per lembar A4 · 55 × 85 mm
+            {participants.length} kartu peserta · {companions.length} kartu
+            pembina · 3 kolom per lembar A4 · 55 × 85 mm
           </p>
         </div>
       </div>
@@ -113,7 +128,7 @@ function PreviewIdCards({ id }: { id: string }) {
         {participants.map((m, index) => (
           <MotionReveal
             className="idcard-wrap"
-            key={m.id}
+            key={`peserta-${m.id}`}
             delay={(index % 3) * 0.05}
           >
             <div
@@ -143,7 +158,44 @@ function PreviewIdCards({ id }: { id: string }) {
               </div>
             </div>
             <p>
-              {m.patrolName} · {m.category}
+              Peserta · {m.patrolName} · {m.category}
+            </p>
+          </MotionReveal>
+        ))}
+        {companions.map((c, index) => (
+          <MotionReveal
+            className="idcard-wrap"
+            key={`pembina-${c.id}`}
+            delay={(index % 3) * 0.05}
+          >
+            <div
+              className="participant-idcard"
+              style={{ backgroundImage: `url("${template.src}")` }}
+              role="img"
+              aria-label={`Kartu pembina ${c.name.toLocaleUpperCase("id")}, pangkalan ${reg.school.name.toLocaleUpperCase("id")}`}
+            >
+              <div className="idcard-photo">
+                <CompanionPhoto companion={c} />
+              </div>
+              <div
+                className="idcard-name"
+                style={{
+                  fontSize: `${Math.min(12, Math.max(6, 16 - c.name.length * 0.18))}px`,
+                }}
+              >
+                {c.name.toLocaleUpperCase("id")}
+              </div>
+              <div
+                className="idcard-base"
+                style={{
+                  fontSize: `${Math.min(8.5, Math.max(5.5, 11 - reg.school.name.length * 0.08))}px`,
+                }}
+              >
+                {reg.school.name.toLocaleUpperCase("id")}
+              </div>
+            </div>
+            <p>
+              Pembina · {c.patrolName} · {c.category}
             </p>
           </MotionReveal>
         ))}
